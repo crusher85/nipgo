@@ -39,9 +39,29 @@ export interface FirmaViewProps {
   ownerName: string
 }
 
+// Title case for proper nouns (person names)
 function toTitleCase(s: string | null | undefined): string {
   if (!s) return ""
-  return s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+  return s.toLowerCase().replace(/\b\p{L}/gu, c => c.toUpperCase())
+}
+
+// Sentence case: lowercase + capitalize first letter + restore abbreviations (S.A., Sp. z o.o.)
+function toSentenceCase(s: string | null | undefined): string {
+  if (!s) return ""
+  const lower = s.toLowerCase()
+  const first = lower.charAt(0).toUpperCase() + lower.slice(1)
+  // Restore single-letter abbreviations separated by dots: s.a. → S.A., p.p.h. → P.P.H.
+  return first.replace(/\b\p{L}(?:\.\p{L})+\./gu, m => m.toUpperCase())
+}
+
+function formatDate(s: string | null | undefined): string {
+  if (!s) return ""
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return s
+  const dd = String(d.getDate()).padStart(2, "0")
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const yyyy = d.getFullYear()
+  return `${dd}.${mm}.${yyyy}`
 }
 
 function maskPhone(p: string): string {
@@ -314,7 +334,7 @@ export function FirmaView(props: FirmaViewProps) {
               {isStatusActive ? "Aktywna" : "Nieaktywna"}
             </span>
             {legalForm && (
-              <span style={{ fontSize: 12, color: "#999" }}>{toTitleCase(legalForm)}</span>
+              <span style={{ fontSize: 12, color: "#999" }}>{toSentenceCase(legalForm)}</span>
             )}
             <span style={{ fontSize: 12, color: "#999" }}>{source}</span>
           </div>
@@ -329,7 +349,7 @@ export function FirmaView(props: FirmaViewProps) {
               lineHeight: 1.3,
             }}
           >
-            {toTitleCase(name)}
+            {toSentenceCase(name)}
           </h1>
 
           <div
@@ -370,7 +390,7 @@ export function FirmaView(props: FirmaViewProps) {
         >
           {[
             { label: "Kapitał zakładowy", value: capitalFormatted ?? "—" },
-            { label: "Siedziba", value: address.city || "—" },
+            { label: "Siedziba", value: toSentenceCase(address.city) || "—" },
             { label: "Wspólnicy", value: mainShareholder },
             { label: "PKD główne", value: primaryPkd?.code ?? "—" },
           ].map((kpi, i) => (
@@ -454,17 +474,13 @@ export function FirmaView(props: FirmaViewProps) {
                 <SectionCard title="Dane rejestrowe">
                   <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <tbody>
-                      <TableRow label="Pełna nazwa" value={toTitleCase(name)} />
-                      <TableRow label="Forma prawna" value={toTitleCase(legalForm)} />
+                      <TableRow label="Pełna nazwa" value={toSentenceCase(name)} />
+                      <TableRow label="Forma prawna" value={toSentenceCase(legalForm)} />
                       <TableRow
                         label="Data rejestracji"
-                        value={
-                          registrationDate
-                            ? new Date(registrationDate).toLocaleDateString("pl-PL")
-                            : null
-                        }
+                        value={formatDate(registrationDate) || null}
                       />
-                      <TableRow label="Adres siedziby" value={address.full || null} />
+                      <TableRow label="Adres siedziby" value={toSentenceCase(address.full) || null} />
                       <TableRow label="Numer KRS" value={krs || null} />
                       <TableRow label="REGON" value={regon || null} />
                       <TableRow label="Kapitał zakładowy" value={capitalFormatted} />
@@ -532,7 +548,7 @@ export function FirmaView(props: FirmaViewProps) {
                             }}
                           >
                             <td style={tdValue}>{toTitleCase(r.name)}</td>
-                            <td style={{ ...tdValue, color: "#999" }}>{toTitleCase(r.fn)}</td>
+                            <td style={{ ...tdValue, color: "#999" }}>{toSentenceCase(r.fn)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -564,7 +580,7 @@ export function FirmaView(props: FirmaViewProps) {
                             }}
                           >
                             <td style={tdValue}>{toTitleCase(s.name)}</td>
-                            <td style={{ ...tdValue, color: "#999" }}>{s.shares}</td>
+                            <td style={{ ...tdValue, color: "#999" }}>{toSentenceCase(s.shares)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -596,7 +612,7 @@ export function FirmaView(props: FirmaViewProps) {
                 {representationMethod && (
                   <SectionCard title="Sposób reprezentacji">
                     <div style={{ padding: "14px 16px", fontSize: 13, color: "#111", lineHeight: 1.6 }}>
-                      {representationMethod}
+                      {toSentenceCase(representationMethod)}
                     </div>
                   </SectionCard>
                 )}
@@ -621,7 +637,7 @@ export function FirmaView(props: FirmaViewProps) {
                           {p.code}
                           {p.description && (
                             <span style={{ color: "#999", fontWeight: 400 }}>
-                              {" "}— {p.description}
+                              {" "}— {toSentenceCase(p.description)}
                             </span>
                           )}
                         </span>
