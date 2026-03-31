@@ -45,6 +45,15 @@ function toTitleCase(s: string | null | undefined): string {
   return s.toLowerCase().replace(/\b\p{L}/gu, c => c.toUpperCase())
 }
 
+// Proper case for company names: capitalize words, lowercase common conjunctions/prepositions
+function toProperCase(str: string): string {
+  return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+    .replace(/\bZ\b/g, "z")
+    .replace(/\bW\b/g, "w")
+    .replace(/\bI\b/g, "i")
+    .replace(/\bOraz\b/g, "oraz")
+}
+
 // Sentence case: lowercase + capitalize first letter + restore abbreviations (S.A., Sp. z o.o.)
 function toSentenceCase(s: string | null | undefined): string {
   if (!s) return ""
@@ -414,7 +423,7 @@ export function FirmaView(props: FirmaViewProps) {
               lineHeight: 1.3,
             }}
           >
-            {toTitleCase(name)}
+            {toProperCase(name)}
           </h1>
 
           <div
