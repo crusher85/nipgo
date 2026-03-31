@@ -16,7 +16,6 @@ async function getFirma(nip: string) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
   const clean = nip.replace(/-/g, '')
-  console.log('Szukam NIP:', clean)
 
   const { data: ceidg } = await supabase
     .from('ceidg_firms')
@@ -40,7 +39,6 @@ async function getFirma(nip: string) {
       email, telefon, www`)
     .eq('nip', clean)
     .maybeSingle()
-    console.log('KRS:', krs, 'Error:', krsError)
 
   if (krs) return { ...krs, zrodlo: 'KRS' as const }
   return null
