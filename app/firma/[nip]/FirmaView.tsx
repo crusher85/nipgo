@@ -64,6 +64,20 @@ function formatDate(s: string | null | undefined): string {
   return `${dd}.${mm}.${yyyy}`
 }
 
+function formatAddress(s: string | null | undefined): string {
+  if (!s) return ""
+  let r = s.toLowerCase()
+  // Remove space before slash: "6 /2" → "6/2"
+  r = r.replace(/\s+\//g, "/")
+  // Capitalize street name after "ul. "
+  r = r.replace(/\bul\.\s+(\p{L})/gu, (_, l) => "ul. " + l.toUpperCase())
+  // Capitalize city after postal code pattern "62-020 "
+  r = r.replace(/(\d{2}-\d{3}\s+)(\p{L})/gu, (_, code, l) => code + l.toUpperCase())
+  // Capitalize first letter of string if it's a letter (no "ul." prefix)
+  r = r.replace(/^(\p{L})/u, l => l.toUpperCase())
+  return r
+}
+
 function maskPhone(p: string): string {
   const d = p.replace(/\D/g, "")
   if (d.length >= 9) return `+48 ${d.slice(-9, -6)} *** ***`
@@ -112,7 +126,7 @@ const cardHead: React.CSSProperties = {
 }
 
 const sectionTitle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 12,
   fontWeight: 500,
   color: "#999",
   letterSpacing: "0.1em",
@@ -121,7 +135,7 @@ const sectionTitle: React.CSSProperties = {
 }
 
 const tdLabel: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: 13,
   color: "#999",
   padding: "10px 20px",
   verticalAlign: "top",
@@ -373,6 +387,7 @@ export function FirmaView(props: FirmaViewProps) {
               Eksportuj
             </button>
             <button style={btnBlack}>Obserwuj</button>
+            {/* TODO: reklama lub CTA Pro */}
           </div>
         </div>
 
@@ -479,7 +494,7 @@ export function FirmaView(props: FirmaViewProps) {
                         label="Data rejestracji"
                         value={formatDate(registrationDate) || null}
                       />
-                      <TableRow label="Adres siedziby" value={toSentenceCase(address.full) || null} />
+                      <TableRow label="Adres siedziby" value={formatAddress(address.full) || null} />
                       <TableRow label="Numer KRS" value={krs || null} />
                       <TableRow label="REGON" value={regon || null} />
                       <TableRow label="Kapitał zakładowy" value={capitalFormatted} />
@@ -626,9 +641,9 @@ export function FirmaView(props: FirmaViewProps) {
                         <span
                           key={i}
                           style={{
-                            padding: "3px 8px",
+                            padding: "4px 10px",
                             borderRadius: 3,
-                            fontSize: 11,
+                            fontSize: 12,
                             border: "0.5px solid #e0e0e0",
                             background: "#f4f4f4",
                             color: "#555",
