@@ -104,36 +104,35 @@ const PRO_DESCRIPTIONS: Partial<Record<Tab, string>> = {
 const card: React.CSSProperties = {
   border: "1px solid #e5e5e5",
   borderRadius: 8,
-  overflow: "hidden",
   marginBottom: 16,
 }
 
 const cardHead: React.CSSProperties = {
-  padding: "12px 16px",
-  borderBottom: "1px solid #e5e5e5",
+  padding: "16px 20px 12px",
 }
 
 const sectionTitle: React.CSSProperties = {
-  fontSize: 13,
+  fontSize: 11,
   fontWeight: 500,
-  color: "#111",
-  letterSpacing: "-0.02em",
+  color: "#999",
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
   margin: 0,
 }
 
 const tdLabel: React.CSSProperties = {
   fontSize: 12,
   color: "#999",
-  padding: "10px 16px",
+  padding: "10px 20px",
   verticalAlign: "top",
-  width: 180,
+  width: "35%",
   fontWeight: 400,
 }
 
 const tdValue: React.CSSProperties = {
   fontSize: 13,
   color: "#111",
-  padding: "10px 16px",
+  padding: "10px 20px",
   verticalAlign: "top",
 }
 
@@ -163,19 +162,19 @@ const btnBlack: React.CSSProperties = {
 const freeBadge: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 500,
-  padding: "1px 5px",
+  padding: "2px 7px",
   borderRadius: 3,
-  background: "#f0fdf4",
-  color: "#16a34a",
+  background: "#e8f5ee",
+  color: "#1a6b3c",
 }
 
 const proBadge: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 500,
-  padding: "1px 5px",
+  padding: "2px 7px",
   borderRadius: 3,
-  background: "#f5f3ff",
-  color: "#7c3aed",
+  background: "#f0edff",
+  color: "#5b3fc2",
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -405,7 +404,7 @@ export function FirmaView(props: FirmaViewProps) {
               <div style={{ fontSize: 11, color: "#999", marginBottom: 4 }}>{kpi.label}</div>
               <div
                 style={{
-                  fontSize: 14,
+                  fontSize: 17,
                   fontWeight: 500,
                   color: "#111",
                   letterSpacing: "-0.01em",
@@ -437,7 +436,7 @@ export function FirmaView(props: FirmaViewProps) {
                     padding: "10px 16px",
                     fontSize: 13,
                     fontWeight: isActiveTab ? 500 : 400,
-                    color: isActiveTab ? "#111" : "#999",
+                    color: isActiveTab ? "#111" : "#888",
                     background: "none",
                     border: "none",
                     borderBottom: isActiveTab ? "2px solid #111" : "2px solid transparent",
@@ -593,7 +592,7 @@ export function FirmaView(props: FirmaViewProps) {
                   title="Beneficjenci rzeczywiści (CRBR)"
                   badge={<span style={freeBadge}>free</span>}
                 >
-                  <div style={{ padding: "14px 16px", fontSize: 13, color: "#999" }}>
+                  <div style={{ padding: "0 20px 16px", fontSize: 13, color: "#999" }}>
                     Brak danych w rejestrze CRBR
                   </div>
                 </SectionCard>
@@ -603,7 +602,7 @@ export function FirmaView(props: FirmaViewProps) {
                   title="Powiązania kapitałowe"
                   badge={<span style={freeBadge}>free</span>}
                 >
-                  <div style={{ padding: "14px 16px", fontSize: 13, color: "#999" }}>
+                  <div style={{ padding: "0 20px 16px", fontSize: 13, color: "#999" }}>
                     Brak powiązań kapitałowych w bazie
                   </div>
                 </SectionCard>
@@ -611,8 +610,10 @@ export function FirmaView(props: FirmaViewProps) {
                 {/* Sposób reprezentacji */}
                 {representationMethod && (
                   <SectionCard title="Sposób reprezentacji">
-                    <div style={{ padding: "14px 16px", fontSize: 13, color: "#111", lineHeight: 1.6 }}>
-                      {toSentenceCase(representationMethod)}
+                    <div style={{ padding: "0 20px 20px" }}>
+                      <div style={{ padding: 12, background: "#f8f8f8", borderRadius: 6, fontSize: 13, color: "#555", lineHeight: 1.7 }}>
+                        {toSentenceCase(representationMethod)}
+                      </div>
                     </div>
                   </SectionCard>
                 )}
@@ -620,17 +621,17 @@ export function FirmaView(props: FirmaViewProps) {
                 {/* PKD jako tagi */}
                 {pkdCodes.length > 0 && (
                   <SectionCard title="Przedmiot działalności (PKD)">
-                    <div style={{ padding: "14px 16px", display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    <div style={{ padding: "0 20px 16px", display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {pkdCodes.map((p, i) => (
                         <span
                           key={i}
                           style={{
-                            padding: "4px 10px",
-                            borderRadius: 4,
-                            fontSize: 12,
-                            border: `1px solid ${p.isPrimary ? "#bbf7d0" : "#e5e5e5"}`,
-                            background: p.isPrimary ? "#f0fdf4" : "#fafafa",
-                            color: "#111",
+                            padding: "3px 8px",
+                            borderRadius: 3,
+                            fontSize: 11,
+                            border: "0.5px solid #e0e0e0",
+                            background: "#f4f4f4",
+                            color: "#555",
                             fontWeight: p.isPrimary ? 500 : 400,
                           }}
                         >
@@ -650,7 +651,7 @@ export function FirmaView(props: FirmaViewProps) {
               {/* Right column */}
               <aside>
                 {/* Mapa */}
-                <div style={{ ...card, overflow: "hidden" }}>
+                <div style={{ ...card, overflow: "hidden", marginBottom: 16 }}>
                   <div style={{ position: "relative", aspectRatio: "4 / 3" }}>
                     <iframe
                       src={`https://maps.google.com/maps?q=${mapQuery}&output=embed&z=14`}
@@ -813,8 +814,8 @@ export function FirmaView(props: FirmaViewProps) {
         <p
           style={{
             marginTop: 32,
-            fontSize: 12,
-            color: "#999",
+            fontSize: 11,
+            color: "#bbb",
             textAlign: "center",
             borderTop: "1px solid #e5e5e5",
             paddingTop: 20,
