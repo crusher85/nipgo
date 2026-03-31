@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ChevronLeft, Download, Printer, Share2, Lock, ExternalLink } from "lucide-react"
+import { ChevronLeft, Download, Printer, Share2, Lock, ExternalLink, MapPin, Users, Briefcase, CircleDollarSign } from "lucide-react"
 
 type Tab = "podstawowe" | "finanse" | "ryzyko" | "aktywnosc" | "dotacje"
 
@@ -69,13 +69,30 @@ function formatAddress(s: string | null | undefined): string {
   let r = s.toLowerCase()
   // Remove space before slash: "6 /2" → "6/2"
   r = r.replace(/\s+\//g, "/")
+  // Remove duplicate city before postal code:
+  // "ul. skrzypowa 6/2, rabowice, 62-020 rabowice" → "ul. skrzypowa 6/2, 62-020 rabowice"
+  r = r.replace(/,\s*[\p{L}\s-]+?,\s*(\d{2}-\d{3})/u, ", $1")
   // Capitalize street name after "ul. "
   r = r.replace(/\bul\.\s+(\p{L})/gu, (_, l) => "ul. " + l.toUpperCase())
-  // Capitalize city after postal code pattern "62-020 "
+  // Capitalize city after postal code "XX-XXX "
   r = r.replace(/(\d{2}-\d{3}\s+)(\p{L})/gu, (_, code, l) => code + l.toUpperCase())
-  // Capitalize first letter of string if it's a letter (no "ul." prefix)
+  // Capitalize first letter of string if no "ul." prefix
   r = r.replace(/^(\p{L})/u, l => l.toUpperCase())
   return r
+}
+
+function maskName(name: string): string {
+  const parts = name.split(" ").filter(Boolean)
+  if (parts.length === 0) return "—"
+  if (parts.length === 1) return (parts[0][0] ?? "") + "***"
+  return (parts[0][0] ?? "") + ". " + (parts[parts.length - 1][0] ?? "") + "***"
+}
+
+function parseSharePercent(shares: string): number {
+  const pct = shares.match(/(\d+(?:[.,]\d+)?)\s*%/)
+  if (pct) return parseFloat(pct[1].replace(",", "."))
+  const num = shares.match(/(\d+)/)
+  return num ? parseFloat(num[1]) : 0
 }
 
 function maskPhone(p: string): string {
@@ -260,6 +277,41 @@ function PaywallOverlay() {
   )
 }
 
+function ShareholdersChart({ shareholders }: { shareholders: Shareholder[] }) {
+  const values = shareholders.map(s => parseSharePercent(s.shares))
+  const total = values.reduce((a, b) => a + b, 0)
+  const maxVal = Math.max(...values)
+
+  return (
+    <div style={{ padding: "16px 20px 4px" }}>
+      {shareholders.map((s, i) => {
+        const pct = total > 0 ? (values[i] / total) * 100 : 100 / shareholders.length
+        const isLargest = values[i] !== 0 && values[i] === maxVal
+        return (
+          <div key={i} style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 12 }}>
+              <span style={{ color: "#555" }}>{maskName(toTitleCase(s.name))}</span>
+              <span style={{ color: "#999" }}>
+                {values[i] > 0 ? `${values[i]}%` : `${Math.round(pct)}%`}
+              </span>
+            </div>
+            <div style={{ background: "#f0f0f0", borderRadius: 3, height: 5 }}>
+              <div
+                style={{
+                  width: `${pct}%`,
+                  height: 5,
+                  borderRadius: 3,
+                  background: isLargest ? "#111" : "#999",
+                }}
+              />
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function FirmaView(props: FirmaViewProps) {
   const [tab, setTab] = useState<Tab>("podstawowe")
@@ -362,7 +414,7 @@ export function FirmaView(props: FirmaViewProps) {
               lineHeight: 1.3,
             }}
           >
-            {toSentenceCase(name)}
+            {toTitleCase(name)}
           </h1>
 
           <div
@@ -403,19 +455,20 @@ export function FirmaView(props: FirmaViewProps) {
           }}
         >
           {[
-            { label: "Kapitał zakładowy", value: capitalFormatted ?? "—" },
-            { label: "Siedziba", value: toSentenceCase(address.city) || "—" },
-            { label: "Wspólnicy", value: mainShareholder },
-            { label: "PKD główne", value: primaryPkd?.code ?? "—" },
+            { label: "Kapitał zakładowy", value: capitalFormatted ?? "—", icon: <CircleDollarSign size={16} style={{ color: "#999" }} /> },
+            { label: "Siedziba", value: toSentenceCase(address.city) || "—", icon: <MapPin size={16} style={{ color: "#999" }} /> },
+            { label: "Wspólnicy", value: mainShareholder, icon: <Users size={16} style={{ color: "#999" }} /> },
+            { label: "PKD główne", value: primaryPkd?.code ?? "—", icon: <Briefcase size={16} style={{ color: "#999" }} /> },
           ].map((kpi, i) => (
             <div
               key={i}
               style={{
                 padding: "14px 18px",
-                borderRight: i < 3 ? "1px solid #e5e5e5" : "none",
+                borderRight: i < 3 ? "0.5px solid #e5e5e5" : "none",
                 background: "#fff",
               }}
             >
+              <div style={{ marginBottom: 6 }}>{kpi.icon}</div>
               <div style={{ fontSize: 11, color: "#999", marginBottom: 4 }}>{kpi.label}</div>
               <div
                 style={{
@@ -448,8 +501,8 @@ export function FirmaView(props: FirmaViewProps) {
                   key={t}
                   onClick={() => setTab(t)}
                   style={{
-                    padding: "10px 16px",
-                    fontSize: 13,
+                    padding: "12px 20px",
+                    fontSize: 14,
                     fontWeight: isActiveTab ? 500 : 400,
                     color: isActiveTab ? "#111" : "#888",
                     background: "none",
@@ -573,13 +626,14 @@ export function FirmaView(props: FirmaViewProps) {
                 {/* Wspólnicy */}
                 {shareholders.length > 0 && (
                   <SectionCard title="Wspólnicy">
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <ShareholdersChart shareholders={shareholders} />
+                    <table style={{ width: "100%", borderCollapse: "collapse", borderTop: "1px solid #e5e5e5" }}>
                       <thead>
                         <tr style={{ borderBottom: "1px solid #e5e5e5" }}>
-                          <th style={{ ...tdLabel, padding: "8px 16px", textAlign: "left" }}>
+                          <th style={{ ...tdLabel, padding: "8px 20px", textAlign: "left" }}>
                             Nazwa / Imię i nazwisko
                           </th>
-                          <th style={{ ...tdLabel, padding: "8px 16px", textAlign: "left" }}>
+                          <th style={{ ...tdLabel, padding: "8px 20px", textAlign: "left" }}>
                             Udziały
                           </th>
                         </tr>
