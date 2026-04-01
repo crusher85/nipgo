@@ -25,11 +25,11 @@ async function getFirma(nip: string) {
   const { data: krs } = await supabase
     .from('krs_firms')
     .select(`krs_number, nip, regon, nazwa_pelna, status_krs, forma_prawna,
-      data_rejestracji, ulica, nr_budynku, kod_pocztowy,
+      rejestr, data_rejestracji, ulica, nr_budynku, kod_pocztowy,
       miejscowosc, gmina, powiat, wojewodztwo, adres_pelny,
       kapital_zakladowy, waluta, zarzad_sklad, reprezentacja_sposob,
       prokurenci, rada_nadzorcza, wspolnicy, pkd_lista,
-      email, telefon, www`)
+      email, telefon, www, restrukturyzacja_upadlosc, all_data_json`)
     .eq('nip', clean)
     .maybeSingle()
 
@@ -100,6 +100,41 @@ function getZarzad(f: any) {
   }))
 }
 
+function getProkurenci(f: any) {
+  if (f.zrodlo !== 'KRS') return []
+  const prok = f.prokurenci as any[]
+  if (!prok || !Array.isArray(prok)) return []
+  return prok.map((os: any) => ({
+    name: `${os.imiona?.imie || ''} ${os.nazwisko?.nazwiskoICzlon || ''}`.trim()
+      || os.imieNazwisko || os.nazwa || '',
+    fn: os.rodzajProkury || os.funkcjaWOrganie || 'Prokurent',
+  }))
+}
+
+function getRadaNadzorcza(f: any) {
+  if (f.zrodlo !== 'KRS') return []
+  const rada = f.rada_nadzorcza as any[]
+  if (!rada || !Array.isArray(rada)) return []
+  return rada.map((os: any) => ({
+    name: `${os.imiona?.imie || ''} ${os.nazwisko?.nazwiskoICzlon || ''}`.trim()
+      || os.imieNazwisko || '',
+    fn: os.funkcjaWOrganie || 'Członek rady',
+  }))
+}
+
+function getFinancialReports(f: any): any[] {
+  if (f.zrodlo !== 'KRS') return []
+  try {
+    const r = f.all_data_json?.odpis?.dane?.dzial3
+      ?.wzmiankiOZlozonychDokumentach
+      ?.wzmiankaOZlozeniuRocznegoSprawozdaniaFinansowego
+    if (!r) return []
+    return Array.isArray(r) ? r : [r]
+  } catch {
+    return []
+  }
+}
+
 function getWspolnicy(f: any) {
   if (f.zrodlo !== 'KRS') return []
   const ws = f.wspolnicy as any[]
@@ -131,9 +166,11 @@ export default async function FirmaPage(
       name={f.nazwa_pelna || ''}
       regon={f.regon || ''}
       krs={f.krs_number || ''}
+      statusKrs={f.status_krs || f.status_gus || ''}
       status={isActive ? 'active' : 'inactive'}
       legalForm={f.forma_prawna || ''}
       source={firma.zrodlo}
+      rejestr={f.rejestr || ''}
       registrationDate={f.data_rozpoczecia || f.data_rejestracji || ''}
       capital={f.kapital_zakladowy || ''}
       currency={f.waluta || 'PLN'}
@@ -155,6 +192,8 @@ export default async function FirmaPage(
       }}
       representationMethod={f.reprezentacja_sposob || ''}
       representatives={getZarzad(f)}
+      prokurenci={getProkurenci(f)}
+      radaNadzorcza={getRadaNadzorcza(f)}
       shareholders={getWspolnicy(f)}
       pkdCodes={getPkdCodes(f)}
       krsLink={f.link_do_wpisu || ''}
@@ -163,6 +202,8 @@ export default async function FirmaPage(
           ? `${f.wlasciciel_imie} ${f.wlasciciel_nazwisko || ''}`.trim()
           : ''
       }
+      restrukturyzacja={f.restrukturyzacja_upadlosc ?? null}
+      financialReports={getFinancialReports(f)}
     />
   )
 }
