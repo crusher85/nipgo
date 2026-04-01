@@ -3,10 +3,21 @@
 import { useState } from "react"
 import Link from "next/link"
 import {
-  ChevronLeft, Download, Printer, Share2, Lock,
-  ExternalLink, MapPin, Users, Briefcase, CircleDollarSign,
-  AlertTriangle, FileText,
+  ChevronLeft,
+  Download,
+  Printer,
+  Share2,
+  Lock,
+  ExternalLink,
+  MapPin,
+  Users,
+  Briefcase,
+  CircleDollarSign,
+  AlertTriangle,
+  FileText,
 } from "lucide-react"
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Tab = "podstawowe" | "finanse" | "ryzyko" | "aktywnosc" | "dotacje"
 
@@ -49,322 +60,318 @@ export interface FirmaViewProps {
   financialReports: any[]
 }
 
-// ─── Utilities ────────────────────────────────────────────────────────────────
+// ─── Formatters ───────────────────────────────────────────────────────────────
 
-function toTitleCase(s: string | null | undefined): string {
-  if (!s) return ""
-  return s.toLowerCase().replace(/\b\p{L}/gu, c => c.toUpperCase())
-}
-
-function toProperCase(str: string): string {
-  return str
+// Per brief: capitalize first letter of each word (split/map)
+function formatCompanyName(name: string): string {
+  if (!name) return ""
+  return name
     .toLowerCase()
-    .replace(/\b\w/g, c => c.toUpperCase())
-    .replace(/\bZ\b/g, "z")
-    .replace(/\bW\b/g, "w")
-    .replace(/\bI\b/g, "i")
-    .replace(/\bOraz\b/g, "oraz")
+    .split(" ")
+    .map(w => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
+    .join(" ")
 }
 
-function toSentenceCase(s: string | null | undefined): string {
+// First letter of first word capitalized only
+function sentenceCase(s: string | null | undefined): string {
   if (!s) return ""
-  const lower = s.toLowerCase()
-  const first = lower.charAt(0).toUpperCase() + lower.slice(1)
-  return first.replace(/\b\p{L}(?:\.\p{L})+\./gu, m => m.toUpperCase())
+  const l = s.toLowerCase()
+  return l.charAt(0).toUpperCase() + l.slice(1)
 }
 
-function formatDate(s: string | null | undefined): string {
+// DD.MM.YYYY
+function fmtDate(s: string | null | undefined): string {
   if (!s) return ""
   const d = new Date(s)
   if (isNaN(d.getTime())) return s
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`
 }
 
-function formatAddress(s: string | null | undefined): string {
+// "5 000 PLN"
+function fmtCapital(amount: string, currency: string): string {
+  const n = Number(amount)
+  if (!amount || isNaN(n)) return ""
+  return `${n.toLocaleString("pl-PL")} ${currency || "PLN"}`
+}
+
+// Fix common address formatting artifacts
+function fmtAddress(s: string | null | undefined): string {
   if (!s) return ""
   let r = s.toLowerCase().replace(/\s+\//g, "/")
   r = r.replace(/,\s*[\p{L}\s-]+?,\s*(\d{2}-\d{3})/u, ", $1")
   r = r.replace(/\bul\.\s+(\p{L})/gu, (_, l) => "ul. " + l.toUpperCase())
   r = r.replace(/(\d{2}-\d{3}\s+)(\p{L})/gu, (_, code, l) => code + l.toUpperCase())
-  r = r.replace(/^(\p{L})/u, l => l.toUpperCase())
-  return r
+  return r.replace(/^(\p{L})/u, l => l.toUpperCase())
 }
 
-function formatPersonName(name: string): string {
+// Names with * are already masked — show as-is; others get title-case
+function fmtPerson(name: string): string {
   if (!name) return ""
   if (name.includes("*")) return name
-  return toTitleCase(name)
+  return name
+    .toLowerCase()
+    .replace(/\b\p{L}/gu, c => c.toUpperCase())
 }
 
-function parseSharePercent(shares: string): number {
-  const pct = shares.match(/(\d+(?:[.,]\d+)?)\s*%/)
+// Parse "50%" or "50 udziałów" → number
+function parsePct(s: string): number {
+  const pct = s.match(/(\d+(?:[.,]\d+)?)\s*%/)
   if (pct) return parseFloat(pct[1].replace(",", "."))
-  const num = shares.match(/(\d+)/)
+  const num = s.match(/(\d+)/)
   return num ? parseFloat(num[1]) : 0
 }
 
 function maskPhone(p: string): string {
   const d = p.replace(/\D/g, "")
-  if (d.length >= 9) return `+48 ${d.slice(-9, -6)} *** ***`
-  return "+48 *** *** ***"
+  return d.length >= 9 ? `+48 ${d.slice(-9, -6)} *** ***` : "+48 *** *** ***"
 }
 
 function maskEmail(e: string): string {
-  const [local, domain] = e.split("@")
-  const ml = (local?.[0] ?? "k") + "***"
-  const dp = domain?.split(".") ?? ["firma", "pl"]
-  const md = (dp[0]?.[0] ?? "f") + "***." + dp.slice(1).join(".")
-  return `${ml}@${md}`
+  const [local = "", domain = ""] = e.split("@")
+  const parts = domain.split(".")
+  return `${local[0] ?? "k"}***@${parts[0]?.[0] ?? "f"}***.${parts.slice(1).join(".")}`
 }
 
 function maskWebsite(w: string): string {
   const clean = w.replace(/^https?:\/\//, "").replace(/^www\./, "")
-  return "www." + (clean[0] ?? "f") + "***"
+  return `www.${clean[0] ?? "f"}***`
 }
 
-function getStatusBadge(statusKrs: string): { label: string; cls: string } {
+// ─── Status badge ──────────────────────────────────────────────────────────────
+
+function resolveStatus(statusKrs: string): { label: string; cls: string } {
   const s = (statusKrs || "").toLowerCase()
-  if (s.includes("aktywn"))   return { label: "Aktywny",   cls: "bg-green-50 text-green-700" }
-  if (s.includes("wykres"))   return { label: statusKrs,   cls: "bg-red-50 text-red-700" }
-  if (s.includes("likwidacj")) return { label: statusKrs, cls: "bg-amber-50 text-amber-700" }
+  if (s.includes("aktywn"))    return { label: "Aktywny",   cls: "bg-green-50 text-green-700" }
+  if (s.includes("wykres"))    return { label: statusKrs,   cls: "bg-red-50 text-red-700" }
+  if (s.includes("likwidacj")) return { label: statusKrs,   cls: "bg-amber-50 text-amber-700" }
   return { label: statusKrs || "Nieznany", cls: "bg-gray-100 text-gray-500" }
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Tabs config ─────────────────────────────────────────────────────────────
 
-const TAB_LABELS: Record<Tab, string> = {
-  podstawowe: "Podstawowe",
-  finanse: "Finanse",
-  ryzyko: "Ryzyko",
-  aktywnosc: "Aktywność",
-  dotacje: "Dotacje UE",
-}
+const TABS: { key: Tab; label: string; pro: boolean }[] = [
+  { key: "podstawowe", label: "Podstawowe", pro: false },
+  { key: "finanse",    label: "Finanse",    pro: true  },
+  { key: "ryzyko",     label: "Ryzyko",     pro: true  },
+  { key: "aktywnosc",  label: "Aktywność",  pro: true  },
+  { key: "dotacje",    label: "Dotacje UE", pro: true  },
+]
 
-const PRO_TABS: Tab[] = ["finanse", "ryzyko", "aktywnosc", "dotacje"]
-
-const PRO_DESCRIPTIONS: Partial<Record<Tab, string>> = {
-  finanse: "Sprawozdania finansowe, wyniki, zadłużenie",
-  ryzyko: "Scoring kredytowy, powiązania, alerty",
+const PRO_DESC: Partial<Record<Tab, string>> = {
+  finanse:   "Sprawozdania finansowe, wyniki, zadłużenie",
+  ryzyko:    "Scoring kredytowy, powiązania, alerty",
   aktywnosc: "Historia zmian, ogłoszenia, przetargi",
-  dotacje: "Dotacje UE i krajowe, projekty unijne",
+  dotacje:   "Dotacje UE i krajowe, projekty unijne",
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Tiny components ─────────────────────────────────────────────────────────
 
-function InitialsAvatar({ name }: { name: string }) {
-  const initials = name
-    .split(" ")
-    .map(n => n.replace(/[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, "")[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase()
+function Badge({ label, cls }: { label: string; cls: string }) {
   return (
-    <div className="bg-blue-50 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-xs font-medium shrink-0">
-      {initials || "?"}
-    </div>
-  )
-}
-
-function Badge({ children, cls }: { children: React.ReactNode; cls: string }) {
-  return (
-    <span className={`text-xs rounded-full px-3 py-0.5 font-medium ${cls}`}>
-      {children}
+    <span className={`inline-block text-xs font-medium rounded-full px-3 py-0.5 ${cls}`}>
+      {label}
     </span>
   )
 }
 
-function SectionCard({
-  title,
-  badge,
+// Avatar with initials — bg-blue-50 text-blue-600 rounded-full w-8 h-8 per brief
+function Avatar({ name }: { name: string }) {
+  const cleaned = name.replace(/[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ\s]/g, "")
+  const initials = cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0]?.toUpperCase() ?? "")
+    .join("")
+  return (
+    <span className="bg-blue-50 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-xs font-semibold shrink-0 select-none">
+      {initials || "?"}
+    </span>
+  )
+}
+
+// Card wrapper — rounded-xl border border-[#e5e7eb] bg-white
+function Card({
   children,
-  className,
+  className = "",
 }: {
-  title: string
-  badge?: React.ReactNode
   children: React.ReactNode
   className?: string
 }) {
   return (
-    <section className={`bg-white border border-gray-200 rounded-xl mb-4 overflow-hidden ${className ?? ""}`}>
-      <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
-        <h2 className="text-xs uppercase tracking-widest text-gray-400 font-medium">{title}</h2>
-        {badge}
-      </div>
+    <div className={`bg-white rounded-xl border border-[#e5e7eb] overflow-hidden mb-4 ${className}`}>
       {children}
-    </section>
+    </div>
   )
 }
 
-function FieldRow({ label, value, children }: {
+// Card title row — always p-5, border-b
+function CardHeader({ title, action }: { title: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between px-5 py-4 border-b border-[#e5e7eb]">
+      <h2 className="text-xs font-medium uppercase tracking-widest text-gray-400">{title}</h2>
+      {action}
+    </div>
+  )
+}
+
+// Single label/value field row
+function Field({
+  label,
+  value,
+  children,
+}: {
   label: string
   value?: string | null
   children?: React.ReactNode
 }) {
-  if (!value && !children) return null
+  const content = children ?? value
+  if (!content && content !== 0) return null
   return (
-    <div className="flex gap-4 px-5 py-3">
-      <span className="text-xs uppercase tracking-widest text-gray-400 w-36 shrink-0 pt-0.5 leading-5">
+    <div className="flex gap-6 px-5 py-3 border-b border-[#e5e7eb] last:border-0">
+      <dt className="text-xs font-medium uppercase tracking-widest text-gray-400 w-36 shrink-0 leading-5 pt-px">
         {label}
-      </span>
-      <span className="text-sm text-gray-900 leading-5">{children ?? value}</span>
+      </dt>
+      <dd className="text-sm text-gray-900 leading-5 min-w-0">{content}</dd>
     </div>
   )
 }
 
-function PersonList({ people }: { people: Rep[] }) {
+// Person row with avatar
+function PersonRow({ rep }: { rep: Rep }) {
   return (
-    <div className="divide-y divide-gray-100">
-      {people.map((p, i) => (
-        <div key={i} className="flex items-center gap-3 px-5 py-3">
-          <InitialsAvatar name={p.name} />
-          <div>
-            <p className="text-sm text-gray-900">{formatPersonName(p.name)}</p>
-            {p.fn && (
-              <p className="text-xs text-gray-400 mt-0.5">{toSentenceCase(p.fn)}</p>
-            )}
-          </div>
-        </div>
-      ))}
+    <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#e5e7eb] last:border-0">
+      <Avatar name={rep.name} />
+      <div className="min-w-0">
+        <p className="text-sm text-gray-900 truncate">{fmtPerson(rep.name)}</p>
+        {rep.fn && (
+          <p className="text-xs text-gray-400 mt-0.5 truncate">{sentenceCase(rep.fn)}</p>
+        )}
+      </div>
     </div>
   )
 }
 
-function ShareholdersChart({ shareholders }: { shareholders: Shareholder[] }) {
-  const values = shareholders.map(s => parseSharePercent(s.shares))
-  const total = values.reduce((a, b) => a + b, 0)
-  const maxVal = Math.max(...values)
+// Sidebar section wrapper — p-5 per brief
+function SideCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="px-5 pt-4 pb-3 border-b border-gray-100">
-      {shareholders.map((s, i) => {
-        const pct = total > 0 ? (values[i] / total) * 100 : 100 / shareholders.length
-        const isLargest = values[i] !== 0 && values[i] === maxVal
-        return (
-          <div key={i} className="mb-4 last:mb-0">
-            <div className="flex justify-between mb-1.5 text-xs">
-              <span className="text-gray-600">{formatPersonName(s.name)}</span>
-              <span className="text-gray-400">
-                {values[i] > 0 ? `${values[i]}%` : `${Math.round(pct)}%`}
-              </span>
-            </div>
-            <div className="bg-gray-100 rounded-full h-1.5">
-              <div
-                className={`h-1.5 rounded-full ${isLargest ? "bg-gray-900" : "bg-gray-400"}`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </div>
-        )
-      })}
+    <div className="bg-white rounded-xl border border-[#e5e7eb] p-5">
+      <h3 className="text-xs font-medium uppercase tracking-widest text-gray-400 mb-4">{title}</h3>
+      {children}
     </div>
   )
 }
 
-function BtnOutline({
+// Outline button
+function Btn({
   children,
+  href,
+  variant = "outline",
+  className = "",
   onClick,
-  className,
 }: {
   children: React.ReactNode
-  onClick?: () => void
+  href?: string
+  variant?: "outline" | "solid"
   className?: string
+  onClick?: () => void
 }) {
+  const base = "inline-flex items-center gap-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+  const styles =
+    variant === "solid"
+      ? "bg-gray-900 text-white hover:bg-gray-800 px-4 py-2"
+      : "border border-[#e5e7eb] bg-white text-gray-700 hover:bg-gray-50 px-4 py-2"
+
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={`${base} ${styles} ${className}`}>
+        {children}
+      </a>
+    )
+  }
   return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2 border border-gray-200 bg-white rounded-lg px-3.5 py-2 text-sm text-gray-800 hover:bg-gray-50 transition-colors cursor-pointer ${className ?? ""}`}
-    >
+    <button onClick={onClick} className={`${base} ${styles} ${className}`}>
       {children}
     </button>
   )
 }
 
-function BtnBlack({
-  children,
-  onClick,
-  className,
-}: {
-  children: React.ReactNode
-  onClick?: () => void
-  className?: string
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`bg-gray-900 text-white rounded-lg px-3.5 py-2 text-sm hover:bg-gray-800 transition-colors cursor-pointer ${className ?? ""}`}
-    >
-      {children}
-    </button>
-  )
-}
-
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export function FirmaView(props: FirmaViewProps) {
   const [tab, setTab] = useState<Tab>("podstawowe")
 
   const {
     nip, name, regon, krs, statusKrs, legalForm, source, rejestr,
-    registrationDate, capital, currency, address, contact,
-    representationMethod, representatives, prokurenci, radaNadzorcza,
-    shareholders, pkdCodes, krsLink, ownerName,
+    registrationDate, capital, currency,
+    address, contact,
+    representationMethod,
+    representatives, prokurenci, radaNadzorcza,
+    shareholders, pkdCodes,
+    krsLink, ownerName,
     restrukturyzacja, financialReports,
   } = props
 
-  const statusBadge = getStatusBadge(statusKrs)
-  const year = registrationDate ? new Date(registrationDate).getFullYear() : null
-  const capitalFormatted = capital
-    ? `${Number(capital).toLocaleString("pl-PL")} ${currency || "PLN"}`
-    : null
-  const mapQuery = encodeURIComponent(
-    address.full || `${address.street}, ${address.postalCode} ${address.city}`
-  )
-  const hasContact = contact.phone || contact.email || contact.website
-  const primaryPkd = pkdCodes.find(p => p.isPrimary)
-  const shareholderCount =
-    shareholders.length > 0 ? String(shareholders.length) : ownerName ? formatPersonName(ownerName) : "—"
+  // Derived values
+  const statusBadge    = resolveStatus(statusKrs)
+  const year           = registrationDate ? new Date(registrationDate).getFullYear() : null
+  const capitalFmt     = capital ? fmtCapital(capital, currency) : null
+  const mapQ           = encodeURIComponent(address.full || `${address.street}, ${address.postalCode} ${address.city}`)
+  const primaryPkd     = pkdCodes.find(p => p.isPrimary)
+  const hasContact     = contact.phone || contact.email || contact.website
+  const shareholderVal = shareholders.length > 0
+    ? String(shareholders.length)
+    : ownerName ? fmtPerson(ownerName) : "—"
+
+  // Shareholders bar chart data
+  const shareVals  = shareholders.map(s => parsePct(s.shares))
+  const shareTotal = shareVals.reduce((a, b) => a + b, 0)
+  const maxShare   = Math.max(...shareVals, 0)
 
   return (
-    <div className="bg-white text-gray-900 min-h-screen">
-      {/* ── Header ── */}
-      <header className="border-b border-gray-200 px-6 h-14 flex items-center justify-between">
+    <div className="min-h-screen bg-[#f9fafb] text-gray-900">
+
+      {/* ══ Navbar ══════════════════════════════════════════════════════════════ */}
+      <header className="bg-white border-b border-[#e5e7eb] h-14 px-6 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-1.5">
-          <span className="text-lg font-bold text-gray-900 tracking-tight">nipgo</span>
-          <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" />
+          <span className="text-[17px] font-bold tracking-tight text-gray-900">nipgo</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
         </Link>
-        <div className="flex gap-2">
-          <BtnOutline>Zaloguj się</BtnOutline>
-          <BtnBlack>Rejestracja</BtnBlack>
+        <div className="flex items-center gap-2">
+          <Btn variant="outline">Zaloguj się</Btn>
+          <Btn variant="solid">Rejestracja</Btn>
         </div>
       </header>
 
-      <main className="max-w-[1100px] mx-auto px-6 pt-6 pb-16">
-        {/* ── Back nav ── */}
+      {/* ══ Page body ═══════════════════════════════════════════════════════════ */}
+      <div className="max-w-[1100px] mx-auto px-6 pt-5 pb-20">
+
+        {/* Breadcrumb */}
         <Link
           href="/"
-          className="inline-flex items-center gap-1 text-xs text-gray-400 mb-5 hover:text-gray-600 transition-colors"
+          className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-5"
         >
-          <ChevronLeft size={14} />
+          <ChevronLeft size={13} strokeWidth={2} />
           Powrót do wyników
         </Link>
 
-        {/* ── Restrukturyzacja / upadłość alert ── */}
+        {/* ── Restrukturyzacja / upadłość ─────────────────────────────────── */}
         {restrukturyzacja && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 flex items-start gap-3">
-            <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+          <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-500" />
             <div>
-              <p className="text-sm font-medium text-amber-800">
-                {toSentenceCase(
-                  restrukturyzacja?.typ ||
-                  restrukturyzacja?.rodzaj ||
-                  restrukturyzacja?.typPostepowania ||
+              <p className="text-sm font-semibold text-amber-800">
+                {sentenceCase(
+                  restrukturyzacja.typ ||
+                  restrukturyzacja.rodzaj ||
+                  restrukturyzacja.typPostepowania ||
                   "Postępowanie restrukturyzacyjne / upadłościowe"
                 )}
               </p>
-              {Array.isArray(restrukturyzacja?.likwidatorzy) &&
+              {Array.isArray(restrukturyzacja.likwidatorzy) &&
                 restrukturyzacja.likwidatorzy.length > 0 && (
                   <div className="mt-2">
-                    <p className="text-xs text-amber-700 font-medium mb-1">Likwidatorzy:</p>
+                    <p className="mb-1 text-xs font-semibold text-amber-700">Likwidatorzy:</p>
                     {restrukturyzacja.likwidatorzy.map((l: any, i: number) => (
                       <p key={i} className="text-xs text-amber-700">
                         {typeof l === "string"
@@ -378,357 +385,399 @@ export function FirmaView(props: FirmaViewProps) {
           </div>
         )}
 
-        {/* ── Company header ── */}
-        <div className="mb-6">
+        {/* ── Company hero ─────────────────────────────────────────────────── */}
+        <div className="mb-7">
+          {/* Status + forma + rejestr badges */}
           <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Badge cls={statusBadge.cls}>{statusBadge.label}</Badge>
+            <Badge label={statusBadge.label} cls={statusBadge.cls} />
             {legalForm && (
-              <Badge cls="bg-gray-100 text-gray-500">{toSentenceCase(legalForm)}</Badge>
+              <Badge label={sentenceCase(legalForm)} cls="bg-gray-100 text-gray-500" />
             )}
             {rejestr === "P" && (
-              <Badge cls="bg-gray-100 text-gray-500">KRS</Badge>
+              <Badge label="KRS" cls="bg-gray-100 text-gray-500" />
             )}
           </div>
 
-          <h1 className="text-2xl font-medium tracking-tight text-gray-900 mb-3 leading-snug">
-            {toProperCase(name)}
+          {/* Company name — brief: split(' ').map(capitalize).join(' ') */}
+          <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-gray-900 mb-3">
+            {formatCompanyName(name)}
           </h1>
 
-          <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-400 mb-5">
-            <span>NIP: <span className="text-gray-900">{nip}</span></span>
-            {krs && <span>KRS: <span className="text-gray-900">{krs}</span></span>}
-            {regon && <span>REGON: <span className="text-gray-900">{regon}</span></span>}
-            {year && <span>od <span className="text-gray-900">{year}</span></span>}
+          {/* IDs row */}
+          <div className="flex flex-wrap gap-x-6 gap-y-1 mb-5">
+            <span className="text-xs text-gray-400">
+              NIP <span className="ml-0.5 font-medium text-gray-700">{nip}</span>
+            </span>
+            {krs && (
+              <span className="text-xs text-gray-400">
+                KRS <span className="ml-0.5 font-medium text-gray-700">{krs}</span>
+              </span>
+            )}
+            {regon && (
+              <span className="text-xs text-gray-400">
+                REGON <span className="ml-0.5 font-medium text-gray-700">{regon}</span>
+              </span>
+            )}
+            {year && (
+              <span className="text-xs text-gray-400">
+                od <span className="ml-0.5 font-medium text-gray-700">{year}</span>
+              </span>
+            )}
           </div>
 
+          {/* CTA buttons */}
           <div className="flex gap-2">
-            <BtnOutline><Download size={14} />Eksportuj</BtnOutline>
-            <BtnBlack>Obserwuj</BtnBlack>
+            <Btn variant="outline"><Download size={14} />Eksportuj</Btn>
+            <Btn variant="solid">Obserwuj</Btn>
           </div>
         </div>
 
-        {/* ── KPI strip ── */}
-        <div className="grid grid-cols-4 border border-gray-200 rounded-xl overflow-hidden mb-6">
-          {[
-            {
-              label: "Kapitał zakładowy",
-              value: capitalFormatted ?? "—",
-              icon: <CircleDollarSign size={16} className="text-gray-400" />,
-            },
-            {
-              label: "Siedziba",
-              value: toSentenceCase(address.city) || "—",
-              icon: <MapPin size={16} className="text-gray-400" />,
-            },
-            {
-              label: "Wspólnicy",
-              value: shareholderCount,
-              icon: <Users size={16} className="text-gray-400" />,
-            },
-            {
-              label: "PKD główne",
-              value: primaryPkd?.code ?? "—",
-              icon: <Briefcase size={16} className="text-gray-400" />,
-            },
-          ].map((kpi, i) => (
-            <div
-              key={i}
-              className={`p-4 bg-white ${i < 3 ? "border-r border-gray-200" : ""}`}
-            >
-              <div className="mb-2">{kpi.icon}</div>
-              <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">{kpi.label}</p>
-              <p className="text-base font-medium text-gray-900 tracking-tight">{kpi.value}</p>
+        {/* ── KPI strip ────────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-4 rounded-xl border border-[#e5e7eb] bg-white overflow-hidden mb-6">
+          {([
+            { icon: <CircleDollarSign size={17} className="text-gray-400" />, label: "Kapitał zakładowy", value: capitalFmt ?? "—" },
+            { icon: <MapPin           size={17} className="text-gray-400" />, label: "Siedziba",           value: sentenceCase(address.city) || "—" },
+            { icon: <Users            size={17} className="text-gray-400" />, label: "Wspólnicy",          value: shareholderVal },
+            { icon: <Briefcase        size={17} className="text-gray-400" />, label: "PKD główne",         value: primaryPkd?.code ?? "—" },
+          ] as const).map((kpi, i) => (
+            <div key={i} className={`p-5 ${i < 3 ? "border-r border-[#e5e7eb]" : ""}`}>
+              <div className="mb-3">{kpi.icon}</div>
+              <p className="text-xs font-medium uppercase tracking-widest text-gray-400 mb-1">{kpi.label}</p>
+              <p className="text-[17px] font-semibold text-gray-900 tracking-tight">{kpi.value}</p>
             </div>
           ))}
         </div>
 
-        {/* ── Tabs ── */}
-        <div className="border-b border-gray-200 flex mb-6 overflow-x-auto">
-          {(Object.keys(TAB_LABELS) as Tab[]).map(t => {
-            const isPro = PRO_TABS.includes(t)
-            const isActive = tab === t
+        {/* ── Tabs ─────────────────────────────────────────────────────────── */}
+        <div className="flex border-b border-[#e5e7eb] mb-6 overflow-x-auto bg-white rounded-t-xl -mx-0">
+          {TABS.map(t => {
+            const active = tab === t.key
             return (
               <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-5 py-3 text-sm whitespace-nowrap flex items-center gap-2 border-b-2 -mb-px transition-colors shrink-0 ${
-                  isActive
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={[
+                  "flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap",
+                  active
                     ? "border-gray-900 font-medium text-gray-900"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
-                }`}
+                    : "border-transparent font-normal text-gray-500 hover:text-gray-700",
+                ].join(" ")}
               >
-                {TAB_LABELS[t]}
-                <span
-                  className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                    isPro ? "bg-purple-50 text-purple-600" : "bg-green-50 text-green-600"
-                  }`}
-                >
-                  {isPro ? "Pro" : "free"}
+                {t.label}
+                <span className={`rounded text-[10px] font-semibold px-1.5 py-px ${t.pro ? "bg-violet-50 text-violet-600" : "bg-green-50 text-green-600"}`}>
+                  {t.pro ? "PRO" : "free"}
                 </span>
               </button>
             )
           })}
         </div>
 
-        {/* ── Tab: Podstawowe ── */}
+        {/* ══ Tab: Podstawowe ═════════════════════════════════════════════════ */}
         {tab === "podstawowe" && (
           <div className="flex gap-6 items-start">
-            {/* Left column */}
+
+            {/* ── Left column ────────────────────────────────────────────── */}
             <div className="flex-1 min-w-0">
+
               {/* Dane rejestrowe */}
-              <SectionCard title="Dane rejestrowe">
-                <div className="divide-y divide-gray-100">
-                  <FieldRow label="Pełna nazwa" value={toSentenceCase(name)} />
-                  <FieldRow label="Forma prawna" value={toSentenceCase(legalForm)} />
-                  <FieldRow label="Data rejestracji" value={formatDate(registrationDate) || null} />
-                  <FieldRow label="Adres siedziby" value={formatAddress(address.full) || null} />
-                  <FieldRow label="Numer KRS" value={krs || null} />
-                  <FieldRow label="REGON" value={regon || null} />
-                  <FieldRow label="Kapitał zakładowy" value={capitalFormatted} />
-                  <FieldRow label="Właściciel" value={ownerName ? formatPersonName(ownerName) : null} />
-                </div>
-              </SectionCard>
+              <Card>
+                <CardHeader title="Dane rejestrowe" />
+                <dl>
+                  <Field label="Pełna nazwa"        value={formatCompanyName(name)} />
+                  <Field label="Forma prawna"        value={sentenceCase(legalForm)} />
+                  <Field label="Data rejestracji"    value={fmtDate(registrationDate) || null} />
+                  <Field label="Adres siedziby"      value={fmtAddress(address.full) || null} />
+                  {address.voivodeship && (
+                    <Field label="Województwo"       value={sentenceCase(address.voivodeship)} />
+                  )}
+                  <Field label="Numer KRS"           value={krs || null} />
+                  <Field label="REGON"               value={regon || null} />
+                  <Field label="NIP"                 value={nip} />
+                  <Field label="Kapitał zakładowy"   value={capitalFmt} />
+                  {ownerName && (
+                    <Field label="Właściciel"        value={fmtPerson(ownerName)} />
+                  )}
+                </dl>
+              </Card>
 
               {/* Kontakt — paywall */}
               {hasContact && (
-                <SectionCard title="Kontakt" className="relative">
-                  <div className="divide-y divide-gray-100 blur-sm pointer-events-none select-none">
-                    {contact.phone && <FieldRow label="Telefon" value={maskPhone(contact.phone)} />}
-                    {contact.email && <FieldRow label="E-mail" value={maskEmail(contact.email)} />}
-                    {contact.website && <FieldRow label="Strona www" value={maskWebsite(contact.website)} />}
+                <Card className="relative">
+                  <CardHeader title="Kontakt" />
+                  {/* blurred preview */}
+                  <dl className="blur-[4px] pointer-events-none select-none">
+                    {contact.email   && <Field label="E-mail"     value={maskEmail(contact.email)} />}
+                    {contact.website && <Field label="Strona www"  value={maskWebsite(contact.website)} />}
+                    {contact.phone   && <Field label="Telefon"     value={maskPhone(contact.phone)} />}
+                  </dl>
+                  {/* overlay */}
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-white/75 backdrop-blur-[3px]">
+                    <Lock size={20} className="text-gray-300 mb-2" />
+                    <p className="text-sm font-semibold text-gray-800 mb-1">Dane kontaktowe</p>
+                    <p className="text-xs text-gray-400 mb-4">Dostępne w planie Pro</p>
+                    <button className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 transition-colors cursor-pointer">
+                      Odblokuj za 49 zł/mies.
+                    </button>
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-xl">
-                    <div className="text-center">
-                      <Lock size={18} className="text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm font-medium text-gray-900 mb-3">Dane kontaktowe</p>
-                      <button className="bg-gray-900 text-white text-xs rounded-lg px-4 py-2 hover:bg-gray-800 transition-colors cursor-pointer">
-                        Odblokuj za 49 zł/mies.
-                      </button>
-                    </div>
-                  </div>
-                </SectionCard>
+                </Card>
               )}
 
               {/* Zarząd */}
               {representatives.length > 0 && (
-                <SectionCard title="Zarząd">
-                  <PersonList people={representatives} />
+                <Card>
+                  <CardHeader title="Zarząd" />
+                  {representatives.map((r, i) => <PersonRow key={i} rep={r} />)}
                   {representationMethod && (
-                    <div className="px-5 py-4 border-t border-gray-100">
-                      <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">
+                    <div className="px-5 pt-4 pb-5 border-t border-[#e5e7eb]">
+                      <p className="text-xs font-medium uppercase tracking-widest text-gray-400 mb-2">
                         Sposób reprezentacji
                       </p>
-                      <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3">
-                        {toSentenceCase(representationMethod)}
+                      <p className="rounded-lg bg-gray-50 p-3.5 text-sm leading-relaxed text-gray-700">
+                        {sentenceCase(representationMethod)}
                       </p>
                     </div>
                   )}
-                </SectionCard>
+                </Card>
               )}
 
               {/* Prokurenci */}
               {prokurenci.length > 0 && (
-                <SectionCard title="Prokurenci">
-                  <PersonList people={prokurenci} />
-                </SectionCard>
+                <Card>
+                  <CardHeader title="Prokurenci" />
+                  {prokurenci.map((p, i) => <PersonRow key={i} rep={p} />)}
+                </Card>
               )}
 
               {/* Rada nadzorcza */}
               {radaNadzorcza.length > 0 && (
-                <SectionCard title="Rada nadzorcza">
-                  <PersonList people={radaNadzorcza} />
-                </SectionCard>
+                <Card>
+                  <CardHeader title="Rada nadzorcza" />
+                  {radaNadzorcza.map((r, i) => <PersonRow key={i} rep={r} />)}
+                </Card>
               )}
 
               {/* Wspólnicy */}
               {shareholders.length > 0 && (
-                <SectionCard title="Wspólnicy">
-                  <ShareholdersChart shareholders={shareholders} />
-                  <div className="divide-y divide-gray-100">
-                    {shareholders.map((s, i) => (
-                      <div key={i} className="flex items-center gap-3 px-5 py-3">
-                        <InitialsAvatar name={s.name} />
-                        <p className="flex-1 text-sm text-gray-900">{formatPersonName(s.name)}</p>
-                        <span className="text-xs text-gray-400">{toSentenceCase(s.shares)}</span>
-                      </div>
-                    ))}
+                <Card>
+                  <CardHeader title="Wspólnicy" />
+
+                  {/* Bar chart */}
+                  <div className="px-5 pt-5 pb-4 border-b border-[#e5e7eb] space-y-4">
+                    {shareholders.map((s, i) => {
+                      const pct = shareTotal > 0
+                        ? (shareVals[i] / shareTotal) * 100
+                        : 100 / shareholders.length
+                      const isTop = shareVals[i] !== 0 && shareVals[i] === maxShare
+                      return (
+                        <div key={i}>
+                          <div className="flex justify-between text-xs mb-1.5">
+                            <span className="text-gray-700 truncate max-w-[75%]">{fmtPerson(s.name)}</span>
+                            <span className="text-gray-400 shrink-0 ml-2">
+                              {shareVals[i] > 0 ? `${shareVals[i]}%` : `${Math.round(pct)}%`}
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-gray-100">
+                            <div
+                              className={`h-1.5 rounded-full ${isTop ? "bg-gray-800" : "bg-gray-300"}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                </SectionCard>
+
+                  {/* List */}
+                  {shareholders.map((s, i) => (
+                    <div key={i} className="flex items-center gap-3 px-5 py-3.5 border-b border-[#e5e7eb] last:border-0">
+                      <Avatar name={s.name} />
+                      <p className="flex-1 text-sm text-gray-900 min-w-0 truncate">{fmtPerson(s.name)}</p>
+                      {s.shares && (
+                        <span className="text-xs text-gray-400 shrink-0">{sentenceCase(s.shares)}</span>
+                      )}
+                    </div>
+                  ))}
+                </Card>
               )}
 
-              {/* Sposób reprezentacji (standalone gdy brak zarządu) */}
+              {/* Sposób reprezentacji — standalone (gdy brak zarządu) */}
               {representationMethod && representatives.length === 0 && (
-                <SectionCard title="Sposób reprezentacji">
-                  <div className="px-5 py-4">
-                    <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3">
-                      {toSentenceCase(representationMethod)}
+                <Card>
+                  <CardHeader title="Sposób reprezentacji" />
+                  <div className="px-5 py-5">
+                    <p className="rounded-lg bg-gray-50 p-3.5 text-sm leading-relaxed text-gray-700">
+                      {sentenceCase(representationMethod)}
                     </p>
                   </div>
-                </SectionCard>
+                </Card>
               )}
 
               {/* PKD */}
               {pkdCodes.length > 0 && (
-                <SectionCard title="Przedmiot działalności (PKD)">
-                  <div className="divide-y divide-gray-100">
-                    {pkdCodes.map((p, i) => (
-                      <div key={i} className="flex items-start gap-3 px-5 py-3">
-                        <span className={`font-mono text-xs text-gray-500 shrink-0 pt-0.5 w-16 ${p.isPrimary ? "font-semibold" : ""}`}>
-                          {p.code}
+                <Card>
+                  <CardHeader title="Przedmiot działalności (PKD)" />
+                  {pkdCodes.map((p, i) => (
+                    <div key={i} className="flex items-start gap-3 px-5 py-3.5 border-b border-[#e5e7eb] last:border-0">
+                      {/* kod PKD — font-mono text-xs text-gray-500 per brief */}
+                      <span className={`font-mono text-xs text-gray-500 shrink-0 w-14 pt-0.5 ${p.isPrimary ? "font-bold" : ""}`}>
+                        {p.code}
+                      </span>
+                      <p className="flex-1 text-xs text-gray-600 leading-relaxed min-w-0">
+                        {sentenceCase(p.description)}
+                      </p>
+                      {p.isPrimary && (
+                        <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                          przeważająca
                         </span>
-                        <span className="text-xs text-gray-600 flex-1 leading-5">
-                          {toSentenceCase(p.description)}
-                        </span>
-                        {p.isPrimary && (
-                          <span className="shrink-0 bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded font-medium">
-                            przeważająca
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </SectionCard>
+                      )}
+                    </div>
+                  ))}
+                </Card>
               )}
-            </div>
 
-            {/* Right column — sticky sidebar */}
-            <aside className="w-72 shrink-0 sticky top-4 space-y-3">
+            </div>{/* /left column */}
+
+            {/* ── Sticky sidebar (w-72) ───────────────────────────────────── */}
+            <aside className="w-72 shrink-0 sticky top-4 space-y-4">
+
               {/* Mapa */}
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="rounded-xl border border-[#e5e7eb] bg-white overflow-hidden">
                 <div className="relative" style={{ aspectRatio: "4/3" }}>
                   <iframe
-                    src={`https://maps.google.com/maps?q=${mapQuery}&output=embed&z=14`}
+                    src={`https://maps.google.com/maps?q=${mapQ}&output=embed&z=14`}
                     className="w-full h-full border-0 block"
                     title="Lokalizacja firmy"
                     loading="lazy"
                   />
                   <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`}
+                    href={`https://www.google.com/maps/search/?api=1&query=${mapQ}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="absolute bottom-2 right-2 bg-white/90 rounded px-2 py-1 text-[11px] text-gray-800 flex items-center gap-1 no-underline hover:bg-white transition-colors"
+                    className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-white/90 px-2 py-1 text-[11px] text-gray-600 hover:bg-white transition-colors"
                   >
                     <ExternalLink size={10} />
                     Otwórz mapę
                   </a>
                 </div>
+                {(address.full || address.street) && (
+                  <div className="px-4 py-3 border-t border-[#e5e7eb]">
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      {fmtAddress(address.full) || `${address.street}, ${address.postalCode} ${address.city}`}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Akcje */}
-              <div className="bg-white border border-gray-200 rounded-xl p-5">
-                <h2 className="text-xs uppercase tracking-widest text-gray-400 font-medium mb-3">
-                  Akcje
-                </h2>
-                <div className="flex flex-col gap-2">
-                  <BtnOutline className="w-full justify-start">
-                    <Printer size={14} />Drukuj / PDF
-                  </BtnOutline>
-                  <BtnOutline className="w-full justify-start">
-                    <Share2 size={14} />Udostępnij
-                  </BtnOutline>
-                  <BtnBlack className="w-full">Obserwuj</BtnBlack>
+              <SideCard title="Akcje">
+                <div className="space-y-2">
+                  <Btn variant="outline" className="w-full justify-start">
+                    <Printer size={14} className="text-gray-400" /> Drukuj / PDF
+                  </Btn>
+                  <Btn variant="outline" className="w-full justify-start">
+                    <Share2 size={14} className="text-gray-400" /> Udostępnij
+                  </Btn>
+                  <Btn variant="solid" className="w-full justify-center">
+                    Obserwuj
+                  </Btn>
                   {krsLink && (
-                    <a
-                      href={krsLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 border border-gray-200 bg-white rounded-lg px-3.5 py-2 text-sm text-gray-800 hover:bg-gray-50 transition-colors w-full"
-                    >
-                      <ExternalLink size={14} />Wpis w {source}
-                    </a>
+                    <Btn href={krsLink} variant="outline" className="w-full justify-start">
+                      <ExternalLink size={14} className="text-gray-400" /> Wpis w {source}
+                    </Btn>
                   )}
                 </div>
-              </div>
+              </SideCard>
 
               {/* Sprawozdania finansowe — paywall */}
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden relative">
-                <div className="px-5 py-4 border-b border-gray-100">
-                  <h2 className="text-xs uppercase tracking-widest text-gray-400 font-medium">
+              <div className="relative rounded-xl border border-[#e5e7eb] bg-white overflow-hidden">
+                <div className="px-5 py-4 border-b border-[#e5e7eb]">
+                  <h3 className="text-xs font-medium uppercase tracking-widest text-gray-400">
                     Sprawozdania finansowe
-                  </h2>
+                  </h3>
                 </div>
-                <div className="blur-sm pointer-events-none select-none divide-y divide-gray-100">
-                  {(financialReports.length > 0 ? financialReports.slice(0, 3) : [1, 2, 3]).map(
-                    (r: any, i: number) => (
-                      <div key={i} className="flex items-center gap-2 px-5 py-3">
-                        <FileText size={13} className="text-gray-400 shrink-0" />
-                        <span className="text-sm text-gray-900 flex-1">
-                          {typeof r === "object"
-                            ? r.rok || r.dataZlozenia || r.rokObrotowy || `Rok ${2024 - i}`
-                            : `Rok ${2024 - i}`}
-                        </span>
-                        <Download size={12} className="text-gray-400 shrink-0" />
-                      </div>
-                    )
-                  )}
+                {/* blurred rows */}
+                <div className="blur-[4px] pointer-events-none select-none">
+                  {(financialReports.length > 0
+                    ? financialReports.slice(0, 3)
+                    : [{ rok: "2024" }, { rok: "2023" }, { rok: "2022" }]
+                  ).map((r: any, i: number) => (
+                    <div key={i} className="flex items-center gap-2.5 px-5 py-3 border-b border-[#e5e7eb] last:border-0">
+                      <FileText size={14} className="text-gray-400 shrink-0" />
+                      <span className="flex-1 text-sm text-gray-900">
+                        Rok {r.rok || r.dataZlozenia || r.rokObrotowy || 2024 - i}
+                      </span>
+                      <Download size={13} className="text-gray-400 shrink-0" />
+                    </div>
+                  ))}
                 </div>
-                <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
-                  <div className="text-center">
-                    <Lock size={18} className="text-gray-400 mx-auto mb-2" />
-                    <button className="bg-gray-900 text-white text-xs rounded-lg px-4 py-2 hover:bg-gray-800 transition-colors cursor-pointer">
-                      Odblokuj za 49 zł/mies.
-                    </button>
-                  </div>
+                {/* overlay */}
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[3px]">
+                  <Lock size={18} className="text-gray-300 mb-2" />
+                  <p className="text-xs text-gray-400 mb-3">Dostępne w planie Pro</p>
+                  <button className="rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white hover:bg-gray-800 transition-colors cursor-pointer">
+                    Odblokuj za 49 zł/mies.
+                  </button>
                 </div>
               </div>
 
               {/* Pro CTA */}
-              <div className="bg-gray-900 rounded-xl p-5 text-white">
-                <p className="text-[10px] font-medium opacity-50 uppercase tracking-widest mb-1">
+              <div className="rounded-xl bg-gray-900 p-5 text-white">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">
                   Plan Pro
                 </p>
-                <p className="text-sm font-medium mb-4 leading-snug">
-                  Pełny dostęp do danych finansowych, ryzyka i aktywności
+                <p className="mb-4 text-sm font-medium leading-snug">
+                  Finanse, ryzyko, powiązania i dotacje UE w jednym miejscu
                 </p>
-                <button className="w-full bg-white text-gray-900 rounded-lg py-2 text-sm font-medium hover:bg-gray-100 transition-colors cursor-pointer">
+                <button className="w-full cursor-pointer rounded-lg bg-white py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-100 transition-colors">
                   Odblokuj za 49 zł/mies.
                 </button>
               </div>
 
               {/* Ad slot */}
-              <div className="ad-slot min-h-[250px] border border-dashed border-gray-200 rounded-xl flex items-center justify-center">
-                <p className="text-xs text-gray-300">Reklama</p>
+              <div className="ad-slot min-h-[250px] rounded-xl border border-dashed border-[#e5e7eb] flex items-center justify-center">
+                <p className="text-xs text-gray-300 select-none">Reklama</p>
               </div>
-            </aside>
-          </div>
-        )}
 
-        {/* ── Pro tabs — paywall overlay ── */}
-        {PRO_TABS.includes(tab) && (
-          <div className="relative min-h-80 border border-gray-200 rounded-xl overflow-hidden">
-            <div className="p-6 blur-sm pointer-events-none select-none">
-              {[60, 80, 70, 50, 65].map((w, i) => (
-                <div
-                  key={i}
-                  className="bg-gray-100 rounded mb-3"
-                  style={{ height: i === 0 ? 20 : 14, width: `${w}%` }}
-                />
+            </aside>{/* /sidebar */}
+          </div>
+        )}{/* /tab podstawowe */}
+
+        {/* ══ Pro tabs — paywall overlay ══════════════════════════════════════ */}
+        {tab !== "podstawowe" && (
+          <div className="relative min-h-[360px] overflow-hidden rounded-xl border border-[#e5e7eb] bg-white">
+            {/* skeleton behind blur */}
+            <div className="space-y-3 p-8 blur-sm pointer-events-none select-none">
+              {[68, 82, 55, 74, 44].map((w, i) => (
+                <div key={i} className="rounded bg-gray-100" style={{ height: i === 0 ? 22 : 14, width: `${w}%` }} />
               ))}
             </div>
-            <div className="absolute inset-0 flex items-center justify-center bg-white/85 backdrop-blur-sm">
-              <div className="text-center">
-                <Lock size={24} className="text-gray-400 mx-auto mb-3" />
-                <p className="text-base font-medium text-gray-900 mb-1 tracking-tight">
-                  Dostępne w planie Pro
-                </p>
-                <p className="text-sm text-gray-400 mb-5">{PRO_DESCRIPTIONS[tab]}</p>
-                <BtnBlack>Odblokuj za 49 zł/mies.</BtnBlack>
-              </div>
+            {/* overlay */}
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/85 backdrop-blur-[3px]">
+              <Lock size={26} className="text-gray-300 mb-3" />
+              <p className="text-[17px] font-semibold tracking-tight text-gray-900 mb-1">
+                Dostępne w planie Pro
+              </p>
+              <p className="text-sm text-gray-400 mb-6">{PRO_DESC[tab]}</p>
+              <button className="cursor-pointer rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-800 transition-colors">
+                Odblokuj za 49 zł/mies.
+              </button>
             </div>
           </div>
         )}
-      </main>
 
-      {/* ── Footer note ── */}
-      <footer className="border-t border-gray-200 py-5">
-        <p className="text-center text-[11px] text-gray-300 max-w-[1100px] mx-auto px-6">
-          Dane pochodzą z{" "}
+      </div>{/* /page body */}
+
+      {/* ══ Footer ══════════════════════════════════════════════════════════════ */}
+      <footer className="border-t border-[#e5e7eb] py-6">
+        <p className="mx-auto max-w-[1100px] px-6 text-center text-[11px] text-gray-300">
+          Dane z{" "}
           {source === "KRS"
             ? "Krajowego Rejestru Sądowego"
             : "Centralnej Ewidencji i Informacji o Działalności Gospodarczej"}
           . Informacje mają charakter poglądowy.
         </p>
       </footer>
+
     </div>
   )
 }
