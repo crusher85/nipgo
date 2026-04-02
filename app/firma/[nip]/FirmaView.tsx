@@ -15,6 +15,7 @@ import {
   CircleDollarSign,
   AlertTriangle,
   FileText,
+  Flag,
 } from "lucide-react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -141,7 +142,7 @@ function maskWebsite(w: string): string {
 
 function resolveStatus(statusKrs: string): { label: string; cls: string } {
   const s = (statusKrs || "").toLowerCase()
-  if (s.includes("aktywn"))    return { label: "Aktywny",   cls: "bg-green-50 text-green-700" }
+  if (s.includes("aktywn"))    return { label: "Aktywny",   cls: "bg-blue-50 text-blue-700" }
   if (s.includes("wykres"))    return { label: statusKrs,   cls: "bg-red-50 text-red-700" }
   if (s.includes("likwidacj")) return { label: statusKrs,   cls: "bg-amber-50 text-amber-700" }
   return { label: statusKrs || "Nieznany", cls: "bg-gray-100 text-gray-500" }
@@ -279,7 +280,7 @@ function Btn({
   const base = "inline-flex items-center gap-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
   const styles =
     variant === "solid"
-      ? "bg-gray-900 text-white hover:bg-gray-800 px-4 py-2"
+      ? "bg-blue-600 text-white hover:bg-blue-700 px-4 py-2"
       : "border border-[#e5e7eb] bg-white text-gray-700 hover:bg-gray-50 px-4 py-2"
 
   if (href) {
@@ -356,7 +357,7 @@ export function FirmaView(props: FirmaViewProps) {
         </Link>
 
         {/* ── Restrukturyzacja / upadłość ─────────────────────────────────── */}
-        {restrukturyzacja && (
+        {restrukturyzacja && typeof restrukturyzacja === 'object' && Object.keys(restrukturyzacja).length > 0 && (
           <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-500" />
             <div>
@@ -400,7 +401,7 @@ export function FirmaView(props: FirmaViewProps) {
 
           {/* Company name — brief: split(' ').map(capitalize).join(' ') */}
           <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-gray-900 mb-3">
-            {formatCompanyName(name)}
+            {name}
           </h1>
 
           {/* IDs row */}
@@ -438,7 +439,7 @@ export function FirmaView(props: FirmaViewProps) {
             { icon: <CircleDollarSign size={17} className="text-gray-400" />, label: "Kapitał zakładowy", value: capitalFmt ?? "—" },
             { icon: <MapPin           size={17} className="text-gray-400" />, label: "Siedziba",           value: sentenceCase(address.city) || "—" },
             { icon: <Users            size={17} className="text-gray-400" />, label: "Wspólnicy",          value: shareholderVal },
-            { icon: <Briefcase        size={17} className="text-gray-400" />, label: "PKD główne",         value: primaryPkd?.code ?? "—" },
+            { icon: <Briefcase        size={17} className="text-gray-400" />, label: "PKD główne",         value: primaryPkd ? `${primaryPkd.code} — ${(primaryPkd.description || "").toLowerCase().split(/\s+/).filter(Boolean).slice(0, 3).join(" ")}` : "—" },
           ] as const).map((kpi, i) => (
             <div key={i} className={`p-5 ${i < 3 ? "border-r border-[#e5e7eb]" : ""}`}>
               <div className="mb-3">{kpi.icon}</div>
@@ -459,7 +460,7 @@ export function FirmaView(props: FirmaViewProps) {
                 className={[
                   "flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap",
                   active
-                    ? "border-gray-900 font-medium text-gray-900"
+                    ? "border-blue-600 font-medium text-blue-600"
                     : "border-transparent font-normal text-gray-500 hover:text-gray-700",
                 ].join(" ")}
               >
@@ -483,7 +484,7 @@ export function FirmaView(props: FirmaViewProps) {
               <Card>
                 <CardHeader title="Dane rejestrowe" />
                 <dl>
-                  <Field label="Pełna nazwa"        value={formatCompanyName(name)} />
+                  <Field label="Pełna nazwa"        value={name} />
                   <Field label="Forma prawna"        value={sentenceCase(legalForm)} />
                   <Field label="Data rejestracji"    value={fmtDate(registrationDate) || null} />
                   <Field label="Adres siedziby"      value={fmtAddress(address.full) || null} />
@@ -505,17 +506,17 @@ export function FirmaView(props: FirmaViewProps) {
                 <Card className="relative">
                   <CardHeader title="Kontakt" />
                   {/* blurred preview */}
-                  <dl className="blur-[4px] pointer-events-none select-none">
+                  <dl className="blur-[2px] pointer-events-none select-none">
                     {contact.email   && <Field label="E-mail"     value={maskEmail(contact.email)} />}
                     {contact.website && <Field label="Strona www"  value={maskWebsite(contact.website)} />}
                     {contact.phone   && <Field label="Telefon"     value={maskPhone(contact.phone)} />}
                   </dl>
                   {/* overlay */}
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-white/75 backdrop-blur-[3px]">
-                    <Lock size={20} className="text-gray-300 mb-2" />
-                    <p className="text-sm font-semibold text-gray-800 mb-1">Dane kontaktowe</p>
-                    <p className="text-xs text-gray-400 mb-4">Dostępne w planie Pro</p>
-                    <button className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 transition-colors cursor-pointer">
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-white/60 backdrop-blur-[1px]">
+                    <Lock size={16} className="text-gray-400 mb-2" />
+                    <p className="text-xs font-semibold text-gray-700 mb-1">Dane kontaktowe</p>
+                    <p className="text-xs text-gray-500 mb-3">Dostępne w planie Pro</p>
+                    <button className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors cursor-pointer">
                       Odblokuj za 49 zł/mies.
                     </button>
                   </div>
@@ -638,7 +639,7 @@ export function FirmaView(props: FirmaViewProps) {
             </div>{/* /left column */}
 
             {/* ── Sticky sidebar (w-72) ───────────────────────────────────── */}
-            <aside className="w-72 shrink-0 sticky top-4 space-y-4">
+            <aside className="w-72 shrink-0 sticky top-4 space-y-4 self-start">
 
               {/* Mapa */}
               <div className="rounded-xl border border-[#e5e7eb] bg-white overflow-hidden">
@@ -680,6 +681,9 @@ export function FirmaView(props: FirmaViewProps) {
                   <Btn variant="solid" className="w-full justify-center">
                     Obserwuj
                   </Btn>
+                  <Btn variant="outline" className="w-full justify-start">
+                    <Flag size={14} className="text-gray-400" /> Zgłoś błąd
+                  </Btn>
                   {krsLink && (
                     <Btn href={krsLink} variant="outline" className="w-full justify-start">
                       <ExternalLink size={14} className="text-gray-400" /> Wpis w {source}
@@ -714,15 +718,15 @@ export function FirmaView(props: FirmaViewProps) {
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[3px]">
                   <Lock size={18} className="text-gray-300 mb-2" />
                   <p className="text-xs text-gray-400 mb-3">Dostępne w planie Pro</p>
-                  <button className="rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white hover:bg-gray-800 transition-colors cursor-pointer">
+                  <button className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 transition-colors cursor-pointer">
                     Odblokuj za 49 zł/mies.
                   </button>
                 </div>
               </div>
 
               {/* Pro CTA */}
-              <div className="rounded-xl bg-gray-900 p-5 text-white">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">
+              <div className="rounded-xl bg-blue-600 p-5 text-white">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-blue-200">
                   Plan Pro
                 </p>
                 <p className="mb-4 text-sm font-medium leading-snug">
@@ -758,7 +762,7 @@ export function FirmaView(props: FirmaViewProps) {
                 Dostępne w planie Pro
               </p>
               <p className="text-sm text-gray-400 mb-6">{PRO_DESC[tab]}</p>
-              <button className="cursor-pointer rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-800 transition-colors">
+              <button className="cursor-pointer rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
                 Odblokuj za 49 zł/mies.
               </button>
             </div>
