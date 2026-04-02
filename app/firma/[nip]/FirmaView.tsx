@@ -138,6 +138,10 @@ function maskWebsite(w: string): string {
   return `www.${clean[0] ?? "f"}***`
 }
 
+function formatRegon(r: string): string {
+  return r && r.endsWith("00000") ? r.slice(0, 9) : r
+}
+
 // ─── Status badge ──────────────────────────────────────────────────────────────
 
 function resolveStatus(statusKrs: string): { label: string; cls: string } {
@@ -416,7 +420,7 @@ export function FirmaView(props: FirmaViewProps) {
             )}
             {regon && (
               <span className="text-xs text-gray-400">
-                REGON <span className="ml-0.5 font-medium text-gray-700">{regon}</span>
+                REGON <span className="ml-0.5 font-medium text-gray-700">{formatRegon(regon)}</span>
               </span>
             )}
             {year && (
@@ -437,14 +441,20 @@ export function FirmaView(props: FirmaViewProps) {
         <div className="grid grid-cols-4 rounded-xl border border-[#e5e7eb] bg-white overflow-hidden mb-6">
           {([
             { icon: <CircleDollarSign size={17} className="text-gray-400" />, label: "Kapitał zakładowy", value: capitalFmt ?? "—" },
-            { icon: <MapPin           size={17} className="text-gray-400" />, label: "Siedziba",           value: sentenceCase(address.city) || "—" },
+            { icon: <MapPin           size={17} className="text-gray-400" />, label: "Siedziba",           value: sentenceCase(address.city) || "—",
+              sub: (address.county || address.voivodeship)
+                ? `${address.county ? sentenceCase(address.county) : ""}${address.voivodeship ? `, ${sentenceCase(address.voivodeship)}` : ""}`
+                : null },
             { icon: <Users            size={17} className="text-gray-400" />, label: "Wspólnicy",          value: shareholderVal },
             { icon: <Briefcase        size={17} className="text-gray-400" />, label: "PKD główne",         value: primaryPkd ? `${primaryPkd.code} — ${(primaryPkd.description || "").toLowerCase().split(/\s+/).filter(Boolean).slice(0, 3).join(" ")}` : "—" },
-          ] as const).map((kpi, i) => (
+          ]).map((kpi, i) => (
             <div key={i} className={`p-5 ${i < 3 ? "border-r border-[#e5e7eb]" : ""}`}>
               <div className="mb-3">{kpi.icon}</div>
               <p className="text-xs font-medium uppercase tracking-widest text-gray-400 mb-1">{kpi.label}</p>
               <p className="text-[17px] font-semibold text-gray-900 tracking-tight">{kpi.value}</p>
+              {"sub" in kpi && kpi.sub && (
+                <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">{kpi.sub}</p>
+              )}
             </div>
           ))}
         </div>
@@ -492,7 +502,7 @@ export function FirmaView(props: FirmaViewProps) {
                     <Field label="Województwo"       value={sentenceCase(address.voivodeship)} />
                   )}
                   <Field label="Numer KRS"           value={krs || null} />
-                  <Field label="REGON"               value={regon || null} />
+                  <Field label="REGON"               value={regon ? formatRegon(regon) : null} />
                   <Field label="NIP"                 value={nip} />
                   <Field label="Kapitał zakładowy"   value={capitalFmt} />
                   {ownerName && (
