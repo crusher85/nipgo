@@ -450,7 +450,7 @@ export function FirmaView(props: FirmaViewProps) {
         </div>
 
         {/* ── Tabs ─────────────────────────────────────────────────────────── */}
-        <div className="flex border-b border-[#e5e7eb] mb-6 overflow-x-auto bg-white rounded-t-xl -mx-0">
+        <div className="flex flex-wrap border-b border-[#e5e7eb] mb-6">
           {TABS.map(t => {
             const active = tab === t.key
             return (
