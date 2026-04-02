@@ -1,3 +1,5 @@
+export const revalidate = 43200
+
 import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
