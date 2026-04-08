@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wyszukiwarka CEIDG — nipgo</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9fafb; color: #111; font-size: 14px; }
+header { background: white; border-bottom: 1px solid #e5e7eb; padding: 14px 24px; display: flex; align-items: center; gap: 8px; }
+header .logo { font-size: 17px; font-weight: 700; }
+header .dot { width: 7px; height: 7px; border-radius: 50%; background: #2563eb; display: inline-block; }
+header .sub { font-size: 13px; color: #9ca3af; margin-left: 4px; }
+.container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+.filters { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 16px; align-items: start; }
+.filter-group { display: flex; flex-direction: column; gap: 6px; }
+.filter-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; }
+.ms-wrap { position: relative; }
+.ms-btn { width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; color: #111; background: white; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 6px; text-align: left; }
+.ms-btn:hover { border-color: #d1d5db; }
+.ms-btn.active { border-color: #2563eb; }
+.ms-btn-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-arrow { color: #9ca3af; font-size: 10px; flex-shrink: 0; transition: transform 0.15s; }
+.ms-btn.active .ms-arrow { transform: rotate(180deg); }
+.ms-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: white; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); z-index: 200; max-height: 300px; flex-direction: column; min-width: 260px; }
+.ms-dropdown.open { display: flex; }
+.ms-search { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; flex-shrink: 0; }
+.ms-search input { width: 100%; border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 8px; font-size: 12px; outline: none; }
+.ms-search input:focus { border-color: #2563eb; }
+.ms-list { overflow-y: auto; flex: 1; }
+.ms-sec { font-size: 11px; font-weight: 600; color: #6b7280; padding: 6px 12px 3px; background: #f9fafb; border-bottom: 1px solid #f3f4f6; letter-spacing: 0.04em; }
+.ms-item { display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer; font-size: 13px; color: #374151; user-select: none; }
+.ms-item:hover { background: #f9fafb; }
+.ms-item.checked { background: #eff6ff; color: #1d4ed8; }
+.ms-item input { accent-color: #2563eb; width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; }
+.ms-footer { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid #f3f4f6; flex-shrink: 0; }
+.ms-footer button { font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid #e5e7eb; background: white; cursor: pointer; color: #6b7280; }
+.ms-footer button:hover { background: #f3f4f6; }
+.ms-badge { background: #2563eb; color: white; border-radius: 999px; font-size: 10px; font-weight: 700; padding: 1px 6px; margin-left: 2px; }
+.checkbox-wrap { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 8px; cursor: pointer; background: white; white-space: nowrap; margin-top: 20px; }
+.checkbox-wrap input { accent-color: #2563eb; width: 15px; height: 15px; cursor: pointer; }
+.btn { padding: 9px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; white-space: nowrap; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-outline { background: white; color: #374151; border: 1px solid #e5e7eb; }
+.btn-outline:hover { background: #f9fafb; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btns { display: flex; gap: 8px; margin-top: 20px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+.count { font-size: 13px; color: #6b7280; }
+.count strong { color: #111; }
+.columns-picker { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; display: none; }
+.columns-picker.open { display: block; }
+.columns-picker h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; margin-bottom: 12px; }
+.columns-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.col-check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #374151; cursor: pointer; }
+.col-check input { accent-color: #2563eb; }
+.table-wrap { background: white; border: 1px solid #e5e7eb; border-radius: 12px; overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; border-bottom: 1px solid #e5e7eb; white-space: nowrap; background: #fafafa; }
+tbody tr { border-bottom: 1px solid #f3f4f6; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #f9fafb; }
+tbody td { padding: 10px 14px; color: #374151; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tbody td a { color: #2563eb; text-decoration: none; }
+.badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px; }
+.badge-active { background: #dcfce7; color: #166534; }
+.badge-inactive { background: #fee2e2; color: #991b1b; }
+.loading, .empty { text-align: center; padding: 48px; color: #9ca3af; }
+.spinner { width: 24px; height: 24px; border: 2px solid #e5e7eb; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; margin-bottom: 10px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.pagination { display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid #e5e7eb; justify-content: flex-end; flex-wrap: wrap; }
+.page-btn { padding: 5px 12px; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; font-size: 13px; color: #374151; }
+.page-btn:hover { background: #f9fafb; }
+.page-btn.active { background: #2563eb; color: white; border-color: #2563eb; }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">nipgo</span><span class="dot"></span>
+  <span class="sub">— wyszukiwarka CEIDG</span>
+</header>
+
+<div class="container">
+  <div class="filters">
+    <div class="filter-group">
+      <div class="filter-label">Województwo</div>
+      <div class="ms-wrap" id="wrap-woj">
+        <button class="ms-btn" id="btn-woj"><span class="ms-btn-text" id="lbl-woj">Wszystkie województwa</span><span class="ms-arrow">▼</span></button>
+        <div class="ms-dropdown" id="dd-woj">
+          <div class="ms-search"><input type="text" id="srch-woj" placeholder="Szukaj..."></div>
+          <div class="ms-list" id="list-woj"></div>
+          <div class="ms-footer"><button onclick="msAll('woj')">Zaznacz wszystkie</button><button onclick="msClear('woj')">Wyczyść</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">PKD (przeważające)</div>
+      <div class="ms-wrap" id="wrap-pkd">
+        <button class="ms-btn" id="btn-pkd"><span class="ms-btn-text" id="lbl-pkd">Ładowanie...</span><span class="ms-arrow">▼</span></button>
+        <div class="ms-dropdown" id="dd-pkd">
+          <div class="ms-search"><input type="text" id="srch-pkd" placeholder="Szukaj PKD lub opisu..."></div>
+          <div class="ms-list" id="list-pkd"></div>
+          <div class="ms-footer"><button onclick="msAll('pkd')">Zaznacz wszystkie</button><button onclick="msClear('pkd')">Wyczyść</button></div>
+        </div>
+      </div>
+    </div>
+    <label class="checkbox-wrap"><input type="checkbox" id="chk-tel"><span>Tylko z telefonem</span></label>
+    <div class="btns">
+      <button class="btn btn-primary" id="btn-search">Szukaj</button>
+      <button class="btn btn-outline" id="btn-reset">Resetuj</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="count" id="count-label">Wpisz filtry i kliknij Szukaj</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline" id="btn-cols">☰ Kolumny</button>
+      <button class="btn btn-outline" id="btn-csv" disabled>↓ Eksport CSV</button>
+    </div>
+  </div>
+
+  <div class="columns-picker" id="cols-picker">
+    <h3>Wybierz kolumny</h3>
+    <div class="columns-grid" id="cols-grid"></div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="empty" id="state-empty">Wybierz filtry i kliknij <strong>Szukaj</strong></div>
+    <div class="loading" id="state-loading" style="display:none"><div class="spinner"></div><br>Ładowanie...</div>
+    <table id="tbl" style="display:none"><thead id="tbl-head"></thead><tbody id="tbl-body"></tbody></table>
+    <div class="pagination" id="pagination" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://hotucriddjhyszhxbjgk.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvdHVjcmlkZGpoeXN6aHhiamdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MjU5NzcsImV4cCI6MjA4ODIwMTk3N30.4l1PeAMXFPDN-FoczI_dD4UWrkAKOW_q4F6ycUQ2ejg'
+
+const WOJE = ['DOLNOŚLĄSKIE','KUJAWSKO-POMORSKIE','LUBELSKIE','LUBUSKIE','ŁÓDZKIE','MAŁOPOLSKIE','MAZOWIECKIE','OPOLSKIE','PODKARPACKIE','PODLASKIE','POMORSKIE','ŚLĄSKIE','ŚWIĘTOKRZYSKIE','WARMIŃSKO-MAZURSKIE','WIELKOPOLSKIE','ZACHODNIOPOMORSKIE']
+
+const COLS = [
+  {key:'nip',label:'NIP'},{key:'nazwa_pelna',label:'Nazwa'},{key:'wlasciciel_imie',label:'Imię'},
+  {key:'wlasciciel_nazwisko',label:'Nazwisko'},{key:'telefon',label:'Telefon'},
+  {key:'telefon_komorkowy_premium',label:'Tel. komórkowy'},{key:'email',label:'Email'},
+  {key:'strona_www',label:'WWW'},{key:'pkd_glowne',label:'PKD główne'},
+  {key:'miejscowosc',label:'Miejscowość'},{key:'kod_pocztowy',label:'Kod pocztowy'},
+  {key:'ulica',label:'Ulica'},{key:'powiat',label:'Powiat'},{key:'wojewodztwo',label:'Województwo'},
+  {key:'status_gus',label:'Status'},{key:'forma_prawna',label:'Forma prawna'},
+  {key:'data_rozpoczecia',label:'Data rozpoczęcia'},{key:'adres_pelny',label:'Adres pełny'},
+]
+const DEF_COLS = ['nip','nazwa_pelna','wlasciciel_imie','wlasciciel_nazwisko','telefon','email','pkd_glowne','miejscowosc','wojewodztwo','status_gus']
+let selCols = [...DEF_COLS]
+let page = 1, total = 0, lastData = []
+const PER = 50
+
+// State
+const sel = {woj: new Set(), pkd: new Set()}
+const items = {woj: [], pkd: []}
+const labels = {woj: {}, pkd: {}}
+
+function api(path, opts={}) {
+  const {headers: h, ...rest} = opts
+  return fetch(SUPABASE_URL + path, {
+    ...rest,
+    headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'count=exact', ...(h||{})}
+  })
+}
+
+// Multi-select
+function msRender(id, q='') {
+  const list = document.getElementById('list-' + id)
+  list.innerHTML = ''
+  const f = q.toLowerCase()
+  items[id].forEach(item => {
+    if (item.startsWith('__sec__')) {
+      if (f) return
+      const d = document.createElement('div')
+      d.className = 'ms-sec'
+      d.textContent = 'Dział ' + item.slice(7)
+      list.appendChild(d)
+      return
+    }
+    const lbl = labels[id][item] || item
+    if (f && !lbl.toLowerCase().includes(f)) return
+    const d = document.createElement('div')
+    d.className = 'ms-item' + (sel[id].has(item) ? ' checked' : '')
+    d.innerHTML = `<input type="checkbox" ${sel[id].has(item)?'checked':''}><span>${lbl}</span>`
+    d.addEventListener('click', () => {
+      sel[id].has(item) ? sel[id].delete(item) : sel[id].add(item)
+      d.classList.toggle('checked', sel[id].has(item))
+      d.querySelector('input').checked = sel[id].has(item)
+      msLabel(id)
+    })
+    list.appendChild(d)
+  })
+}
+
+function msLabel(id) {
+  const n = sel[id].size
+  const el = document.getElementById('lbl-' + id)
+  el.innerHTML = n === 0
+    ? (id==='woj' ? 'Wszystkie województwa' : 'Wszystkie branże')
+    : (id==='woj' ? 'Województwa' : 'PKD') + ` <span class="ms-badge">${n}</span>`
+}
+
+function msAll(id) {
+  items[id].filter(i => !i.startsWith('__')).forEach(i => sel[id].add(i))
+  msRender(id, document.getElementById('srch-'+id).value)
+  msLabel(id)
+}
+
+function msClear(id) {
+  sel[id].clear()
+  msRender(id, document.getElementById('srch-'+id).value)
+  msLabel(id)
+}
+
+function msToggle(id) {
+  const dd = document.getElementById('dd-'+id)
+  const btn = document.getElementById('btn-'+id)
+  const wasOpen = dd.classList.contains('open')
+  ;['woj','pkd'].forEach(x => {
+    document.getElementById('dd-'+x).classList.remove('open')
+    document.getElementById('btn-'+x).classList.remove('active')
+  })
+  if (!wasOpen) {
+    dd.classList.add('open')
+    btn.classList.add('active')
+    setTimeout(() => document.getElementById('srch-'+id).focus(), 50)
+  }
+}
+
+function initWoj() {
+  items.woj = [...WOJE]
+  WOJE.forEach(w => labels.woj[w] = w.charAt(0) + w.slice(1).toLowerCase())
+  msRender('woj')
+}
+
+async function initPkd() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_unique_pkd', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+      body: '{}'
+    })
+    const raw = await res.json()
+    if (!Array.isArray(raw)) throw new Error(JSON.stringify(raw))
+    const secs = {}, exact = {}
+    raw.forEach(r => {
+      const str = String(r.pkd_glowne||'').trim()
+      if (!str) return
+      const sep = str.indexOf(' — ')
+      let code = (sep>0 ? str.slice(0,sep) : str.split(' ')[0]).trim()
+      code = code.replace(/^(\d{2})\.?(\d{2})\.?([A-Z])$/, '$1.$2.$3')
+      if (!/^\d{2}\.\d{2}\.[A-Z]$/.test(code)) return
+      const desc = sep>0 ? str.slice(sep+3).trim() : ''
+      const sec = code.slice(0,2)
+      if (!secs[sec]) secs[sec] = []
+      secs[sec].push(code)
+      exact[code] = desc
+    })
+    const list = []
+    Object.keys(secs).sort().forEach(sec => {
+      list.push('__sec__'+sec)
+      list.push(sec)
+      secs[sec].sort().forEach(c => list.push(c))
+    })
+    items.pkd = list
+    list.forEach(item => {
+      if (item.startsWith('__sec__')) return
+      if (item.length === 2) labels.pkd[item] = item + ' — cały dział'
+      else labels.pkd[item] = exact[item] ? item + ' — ' + exact[item].slice(0,60) : item
+    })
+    msRender('pkd')
+    document.getElementById('lbl-pkd').textContent = 'Wszystkie branże'
+  } catch(e) {
+    document.getElementById('lbl-pkd').textContent = 'Błąd PKD'
+    console.error(e)
+  }
+}
+
+function initCols() {
+  const g = document.getElementById('cols-grid')
+  COLS.forEach(c => {
+    const lbl = document.createElement('label')
+    lbl.className = 'col-check'
+    const cb = document.createElement('input')
+    cb.type = 'checkbox'
+    cb.checked = selCols.includes(c.key)
+    cb.addEventListener('change', () => {
+      selCols = cb.checked ? [...new Set([...selCols, c.key])] : selCols.filter(x=>x!==c.key)
+      if (lastData.length) renderTable(lastData)
+    })
+    lbl.appendChild(cb)
+    lbl.appendChild(document.createTextNode(' '+c.label))
+    g.appendChild(lbl)
+  })
+}
+
+function buildQ(forExport=false) {
+  const tel = document.getElementById('chk-tel').checked
+  const woj = Array.from(sel.woj)
+  const pkd = Array.from(sel.pkd).filter(p => !p.startsWith('__'))
+  const cols = forExport ? COLS.filter(c=>selCols.includes(c.key)).map(c=>c.key) : [...new Set([...selCols,...COLS.map(c=>c.key)])]
+  let p = `select=${cols.join(',')}&order=nazwa_pelna.asc`
+  if (woj.length===1) p += `&wojewodztwo=ilike.*${encodeURIComponent(woj[0])}*`
+  else if (woj.length>1) p += `&or=(${woj.map(w=>'wojewodztwo.ilike.*'+encodeURIComponent(w)+'*').join(',')})`
+  if (pkd.length>0) {
+    const fs = pkd.map(x => { const v = x.length===2 ? x : x.replace(/\./g,''); return 'pkd_glowne.ilike.*'+encodeURIComponent(v)+'*' })
+    if (fs.length===1) p += `&pkd_glowne=ilike.*${encodeURIComponent(pkd[0].length===2?pkd[0]:pkd[0].replace(/\./g,''))}*`
+    else p += `&or=(${fs.join(',')})`
+  }
+  if (tel) p += `&telefon=not.is.null&telefon=neq.brak&telefon=neq.brak%20danych`
+  return p
+}
+
+async function doSearch() {
+  setState('loading')
+  document.getElementById('btn-csv').disabled = true
+  const p = buildQ() + `&limit=${PER}&offset=${(page-1)*PER}`
+  try {
+    const res = await api(`/rest/v1/ceidg_firms?${p}`, {headers:{'Range-Unit':'items','Range':`${(page-1)*PER}-${page*PER-1}`}})
+    const cr = res.headers.get('content-range')
+    if (cr) { const m = cr.match(/\/(\d+)/); if(m) total = parseInt(m[1]) }
+    const data = await res.json()
+    lastData = data
+    document.getElementById('btn-csv').disabled = false
+    const s=(page-1)*PER+1, e=Math.min(page*PER,total)
+    document.getElementById('count-label').innerHTML = `Znaleziono <strong>${total.toLocaleString('pl-PL')}</strong> firm — pokazuję ${s}–${e}`
+    renderTable(data)
+    renderPag()
+    setState('table')
+  } catch(e) {
+    setState('empty')
+    document.getElementById('state-empty').textContent = 'Błąd połączenia.'
+    console.error(e)
+  }
+}
+
+function renderTable(data) {
+  const cols = COLS.filter(c=>selCols.includes(c.key))
+  document.getElementById('tbl-head').innerHTML = '<tr>'+cols.map(c=>`<th>${c.label}</th>`).join('')+'</tr>'
+  if (!data.length) {
+    document.getElementById('tbl-body').innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center;padding:32px;color:#9ca3af">Brak wyników</td></tr>`
+    return
+  }
+  document.getElementById('tbl-body').innerHTML = data.map(row =>
+    '<tr>'+cols.map(c => {
+      let v = row[c.key]??'—'
+      if (c.key==='status_gus') v = `<span class="badge ${String(v).toLowerCase().includes('aktywn')?'badge-active':'badge-inactive'}">${v}</span>`
+      else if (c.key==='nazwa_pelna'&&row.nip) v = `<a href="https://nipgo.pl/firma/${row.nip}" target="_blank">${v}</a>`
+      else if (c.key==='strona_www'&&v!=='—') v = `<a href="${String(v).startsWith('http')?v:'https://'+v}" target="_blank">${v}</a>`
+      return `<td title="${String(row[c.key]??'')}">${v}</td>`
+    }).join('')+'</tr>'
+  ).join('')
+}
+
+function renderPag() {
+  const pag = document.getElementById('pagination')
+  const t = Math.ceil(total/PER)
+  if (t<=1) { pag.style.display='none'; return }
+  pag.style.display='flex'
+  let h = `<span style="font-size:13px;color:#6b7280">Strona ${page} z ${t}</span>`
+  h += `<button class="page-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>‹</button>`
+  for (let i=Math.max(1,page-2);i<=Math.min(t,page+2);i++) h += `<button class="page-btn ${i===page?'active':''}" onclick="goPage(${i})">${i}</button>`
+  h += `<button class="page-btn" onclick="goPage(${page+1})" ${page===t?'disabled':''}>›</button>`
+  pag.innerHTML = h
+}
+
+function goPage(p) { page=p; doSearch(); window.scrollTo(0,0) }
+
+function setState(s) {
+  document.getElementById('state-empty').style.display = s==='empty'?'block':'none'
+  document.getElementById('state-loading').style.display = s==='loading'?'block':'none'
+  document.getElementById('tbl').style.display = s==='table'?'table':'none'
+  document.getElementById('pagination').style.display = s==='table'?'flex':'none'
+}
+
+async function exportCSV() {
+  const btn = document.getElementById('btn-csv')
+  btn.disabled = true; btn.textContent = '⏳ Pobieranie...'
+  const cols = COLS.filter(c=>selCols.includes(c.key))
+  const p = buildQ(true)
+  try {
+    let all=[], off=0
+    while(true) {
+      const res = await api(`/rest/v1/ceidg_firms?${p}&limit=1000&offset=${off}`)
+      const batch = await res.json()
+      if (!batch.length) break
+      all = all.concat(batch)
+      if (batch.length<1000) break
+      off+=1000
+      btn.textContent = `⏳ Pobrano ${all.length}...`
+    }
+    const csv = '\uFEFF' + [cols.map(c=>c.label).join(';'), ...all.map(r=>cols.map(c=>'"'+String(r[c.key]??'').replace(/"/g,'""')+'"').join(';'))].join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}))
+    a.download = `ceidg_${new Date().toISOString().slice(0,10)}.csv`
+    a.click()
+  } catch(e) { alert('Błąd eksportu.'); console.error(e) }
+  finally { btn.disabled=false; btn.textContent='↓ Eksport CSV' }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!SUPABASE_KEY || SUPABASE_KEY==='TWOJ_SUPABASE_ANON_KEY') { alert('Wklej klucze Supabase!'); return }
+
+  // Ochrona hasłem
+  const HASLO = 'kochammojegopajusia1985'
+  const stored = sessionStorage.getItem('auth')
+  if (stored !== HASLO) {
+    const input = prompt('Podaj hasło dostępu:')
+    if (input !== HASLO) {
+      document.body.innerHTML = '<div style="text-align:center;padding:100px;font-family:sans-serif;color:#9ca3af">Brak dostępu.</div>'
+      return
+    }
+    sessionStorage.setItem('auth', HASLO)
+  }
+
+  initWoj(); initPkd(); initCols()
+
+  document.getElementById('btn-woj').addEventListener('click', e => { e.stopPropagation(); msToggle('woj') })
+  document.getElementById('btn-pkd').addEventListener('click', e => { e.stopPropagation(); msToggle('pkd') })
+  document.getElementById('srch-woj').addEventListener('input', e => msRender('woj', e.target.value))
+  document.getElementById('srch-pkd').addEventListener('input', e => msRender('pkd', e.target.value))
+
+  document.addEventListener('click', e => {
+    ['woj','pkd'].forEach(id => {
+      if (!document.getElementById('wrap-'+id).contains(e.target)) {
+        document.getElementById('dd-'+id).classList.remove('open')
+        document.getElementById('btn-'+id).classList.remove('active')
+      }
+    })
+  })
+
+  document.getElementById('btn-search').addEventListener('click', () => { page=1; doSearch() })
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    msClear('woj'); msClear('pkd')
+    document.getElementById('chk-tel').checked = false
+    setState('empty')
+    document.getElementById('state-empty').innerHTML = 'Wybierz filtry i kliknij <strong>Szukaj</strong>'
+    document.getElementById('count-label').textContent = 'Wpisz filtry i kliknij Szukaj'
+    document.getElementById('btn-csv').disabled = true
+    lastData=[]; total=0
+  })
+  document.getElementById('btn-cols').addEventListener('click', () => document.getElementById('cols-picker').classList.toggle('open'))
+  document.getElementById('btn-csv').addEventListener('click', exportCSV)
+})
+</script>
+</body>
+</html>
