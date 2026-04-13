@@ -304,7 +304,7 @@ function buildQ(forExport=false) {
   const tel = document.getElementById('chk-tel').checked
   const woj = Array.from(sel.woj)
   const pkd = Array.from(sel.pkd).filter(p => !p.startsWith('__'))
-  const cols = forExport ? COLS.filter(c=>selCols.includes(c.key)).map(c=>c.key) : [...new Set([...selCols,...COLS.map(c=>c.key)])]
+  const cols = forExport ? COLS.filter(c=>selCols.includes(c.key)).map(c=>c.key) : [...new Set([...selCols, 'nip'])]
   let p = `select=${cols.join(',')}&order=nazwa_pelna.asc`
   if (woj.length===1) p += `&wojewodztwo=ilike.*${encodeURIComponent(woj[0])}*`
   else if (woj.length>1) p += `&or=(${woj.map(w=>'wojewodztwo.ilike.*'+encodeURIComponent(w)+'*').join(',')})`
@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!SUPABASE_KEY || SUPABASE_KEY==='TWOJ_SUPABASE_ANON_KEY') { alert('Wklej klucze Supabase!'); return }
 
   // Ochrona hasłem
-  const HASLO = 'kochammojegopajusia1985'
+  const HASLO = 'nipgo2026'
   const stored = sessionStorage.getItem('auth')
   if (stored !== HASLO) {
     const input = prompt('Podaj hasło dostępu:')
