@@ -320,16 +320,31 @@ function buildQ(forExport=false) {
 async function doSearch() {
   setState('loading')
   document.getElementById('btn-csv').disabled = true
-  const p = buildQ() + `&limit=${PER}&offset=${(page-1)*PER}`
+  const woj = Array.from(sel.woj)
+  const pkd = Array.from(sel.pkd).filter(p => !p.startsWith('__'))
+  const tel = document.getElementById('chk-tel').checked
+  const body = {
+    p_woj: woj.length > 0 ? woj : null,
+    p_pkd: pkd.length > 0 ? pkd.map(p => p.length === 2 ? p : p.replace(/\./g, '')) : null,
+    p_tel: tel,
+    p_limit: PER,
+    p_offset: (page-1)*PER
+  }
   try {
-    const res = await api(`/rest/v1/ceidg_firms?${p}`, {headers:{'Range-Unit':'items','Range':`${(page-1)*PER}-${page*PER-1}`}})
-    const cr = res.headers.get('content-range')
-    if (cr) { const m = cr.match(/\/(\d+)/); if(m) total = parseInt(m[1]) }
+    const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/search_ceidg', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+      body: JSON.stringify(body)
+    })
     const data = await res.json()
+    if (!Array.isArray(data)) throw new Error(JSON.stringify(data))
+    total = data.length > 0 ? parseInt(data[0].total_count) : 0
     lastData = data
-    document.getElementById('btn-csv').disabled = false
+    document.getElementById('btn-csv').disabled = data.length === 0
     const s=(page-1)*PER+1, e=Math.min(page*PER,total)
-    document.getElementById('count-label').innerHTML = `Znaleziono <strong>${total.toLocaleString('pl-PL')}</strong> firm — pokazuję ${s}–${e}`
+    document.getElementById('count-label').innerHTML = total > 0
+      ? `Znaleziono <strong>${total.toLocaleString('pl-PL')}</strong> firm — pokazuję ${s}–${e}`
+      : `Znaleziono <strong>0</strong> firm`
     renderTable(data)
     renderPag()
     setState('table')
@@ -383,16 +398,29 @@ async function exportCSV() {
   const btn = document.getElementById('btn-csv')
   btn.disabled = true; btn.textContent = '⏳ Pobieranie...'
   const cols = COLS.filter(c=>selCols.includes(c.key))
-  const p = buildQ(true)
+  const woj = Array.from(sel.woj)
+  const pkd = Array.from(sel.pkd).filter(p => !p.startsWith('__'))
+  const tel = document.getElementById('chk-tel').checked
   try {
     let all=[], off=0
     while(true) {
-      const res = await api(`/rest/v1/ceidg_firms?${p}&limit=1000&offset=${off}`)
+      const body = {
+        p_woj: woj.length > 0 ? woj : null,
+        p_pkd: pkd.length > 0 ? pkd.map(p => p.length===2 ? p : p.replace(/\./g,'')) : null,
+        p_tel: tel,
+        p_limit: 1000,
+        p_offset: off
+      }
+      const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/search_ceidg', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+        body: JSON.stringify(body)
+      })
       const batch = await res.json()
-      if (!batch.length) break
+      if (!Array.isArray(batch) || !batch.length) break
       all = all.concat(batch)
-      if (batch.length<1000) break
-      off+=1000
+      if (batch.length < 1000) break
+      off += 1000
       btn.textContent = `⏳ Pobrano ${all.length}...`
     }
     const csv = '\uFEFF' + [cols.map(c=>c.label).join(';'), ...all.map(r=>cols.map(c=>'"'+String(r[c.key]??'').replace(/"/g,'""')+'"').join(';'))].join('\n')
@@ -408,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!SUPABASE_KEY || SUPABASE_KEY==='TWOJ_SUPABASE_ANON_KEY') { alert('Wklej klucze Supabase!'); return }
 
   // Ochrona hasłem
-  const HASLO = 'nipgo2026'
+  const HASLO = 'jestemkrulewna'
   const stored = sessionStorage.getItem('auth')
   if (stored !== HASLO) {
     const input = prompt('Podaj hasło dostępu:')
