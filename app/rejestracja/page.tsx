@@ -41,7 +41,7 @@ const PLANS = [
   },
 ]
 
-export default function RejestracjaPage() {
+function RejestracjaContent() {
   const searchParams = useSearchParams()
   const initialPlan = searchParams.get("plan") || "free"
   const [step, setStep] = useState<1 | 2>(1)
@@ -290,4 +290,6 @@ export default function RejestracjaPage() {
       </div>
     </div>
   )
+}export default function RejestracjaPage() {
+  return <Suspense><RejestracjaContent /></Suspense>
 }
