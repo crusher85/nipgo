@@ -1,13 +1,11 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useTheme } from "@/components/ThemeProvider"
-import { useT } from "@/lib/i18n"
 import Link from "next/link"
 
 export default function LoginPage() {
-  const t = useT()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [mode, setMode] = useState<"login" | "register">("login")
@@ -43,18 +41,18 @@ export default function LoginPage() {
     setSuccess(null)
     if (mode === "login") {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(t("login.errorInvalid"))
+      if (error) setError("Nieprawid┼éowy email lub has┼éo")
       else window.location.href = "/dashboard"
     } else {
       const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } })
       if (error) setError(error.message)
-      else setSuccess(t("login.successRegister"))
+      else setSuccess("Sprawd┼║ skrzynk─Ö email i potwierd┼║ rejestracj─Ö")
     }
     setLoading(false)
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "24px", fontFamily: "'DM Sans', system-ui, sans-serif", background: dark ? "#0a0a0a" : "#f0f2f5" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 56px)", padding: "24px", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ width: "100%", maxWidth: 400, background: cardBg, border: `1px solid ${borderColor}`, borderRadius: 20, padding: "40px 36px", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
 
         <div style={{ textAlign: "center", marginBottom: 32 }}>
@@ -63,7 +61,7 @@ export default function LoginPage() {
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#2563eb", display: "inline-block" }} />
           </Link>
           <p style={{ fontSize: 14, color: mutedColor, marginTop: 8 }}>
-            {mode === "login" ? t("login.titleLogin") : t("login.titleRegister")}
+            {mode === "login" ? "Zaloguj si─Ö do swojego konta" : "Utw├│rz nowe konto"}
           </p>
         </div>
 
@@ -75,29 +73,29 @@ export default function LoginPage() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          {t("login.googleBtn")}
+          Kontynuuj z Google
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <div style={{ flex: 1, height: 1, background: inputBorder }} />
-          <span style={{ fontSize: 12, color: mutedColor }}>{t("login.or")}</span>
+          <span style={{ fontSize: 12, color: mutedColor }}>lub</span>
           <div style={{ flex: 1, height: 1, background: inputBorder }} />
         </div>
 
         {!showEmail ? (
           <button onClick={() => setShowEmail(true)}
             style={{ width: "100%", padding: "12px 20px", border: `1px solid ${inputBorder}`, borderRadius: 12, background: cardBg, fontSize: 14, fontWeight: 500, color: textColor, cursor: "pointer" }}>
-            {t("login.emailBtn")}
+            Kontynuuj z emailem
           </button>
         ) : (
           <form onSubmit={handleEmail}>
-            <input type="email" placeholder={t("login.emailPlaceholder")} value={email} onChange={e => setEmail(e.target.value)} required
+            <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required
               style={{ width: "100%", padding: "12px 14px", border: `1px solid ${inputBorder}`, borderRadius: 10, fontSize: 14, marginBottom: 10, outline: "none", boxSizing: "border-box", fontFamily: "inherit", background: cardBg, color: textColor }} />
-            <input type="password" placeholder={t("login.passwordPlaceholder")} value={password} onChange={e => setPassword(e.target.value)} required
+            <input type="password" placeholder="Has┼éo" value={password} onChange={e => setPassword(e.target.value)} required
               style={{ width: "100%", padding: "12px 14px", border: `1px solid ${inputBorder}`, borderRadius: 10, fontSize: 14, marginBottom: 16, outline: "none", boxSizing: "border-box", fontFamily: "inherit", background: cardBg, color: textColor }} />
             <button type="submit" disabled={loading}
               style={{ width: "100%", padding: "12px 20px", border: "none", borderRadius: 12, background: "#2563eb", color: "#fff", fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, fontFamily: "inherit" }}>
-              {loading ? t("login.loading") : mode === "login" ? t("login.submitLogin") : t("login.submitRegister")}
+              {loading ? "..." : mode === "login" ? "Zaloguj si─Ö" : "Zarejestruj si─Ö"}
             </button>
           </form>
         )}
@@ -107,12 +105,12 @@ export default function LoginPage() {
 
         <p style={{ fontSize: 13, color: mutedColor, textAlign: "center", marginTop: 20 }}>
           {mode === "login" ? (
-            <>{t("login.noAccount")}{" "}
-              <button onClick={() => setMode("register")} style={{ color: "#2563eb", fontWeight: 600, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>{t("login.signUp")}</button>
+            <>Nie masz konta?{" "}
+              <button onClick={() => setMode("register")} style={{ color: "#2563eb", fontWeight: 600, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>Zarejestruj si─Ö</button>
             </>
           ) : (
-            <>{t("login.hasAccount")}{" "}
-              <button onClick={() => setMode("login")} style={{ color: "#2563eb", fontWeight: 600, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>{t("login.signIn")}</button>
+            <>Masz ju┼╝ konto?{" "}
+              <button onClick={() => setMode("login")} style={{ color: "#2563eb", fontWeight: 600, background: "none", border: "none", cursor: "pointer", fontSize: 13 }}>Zaloguj si─Ö</button>
             </>
           )}
         </p>
