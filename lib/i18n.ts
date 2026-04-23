@@ -1182,13 +1182,7 @@ const translations = { pl, en }
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 type Lang = "pl" | "en"
-type DeepKeys<T, Prefix extends string = ""> = {
-  [K in keyof T]: T[K] extends object
-    ? DeepKeys<T[K], `${Prefix}${K & string}.`>
-    : `${Prefix}${K & string}`
-}[keyof T]
-
-type TranslationKey = DeepKeys<typeof pl>
+type TranslationKey = string
 
 function getNestedValue(obj: any, path: string): string {
   const parts = path.split(".")
