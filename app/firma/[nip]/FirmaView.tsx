@@ -771,9 +771,9 @@ export function FirmaView(props: FirmaViewProps) {
 
                   {/* Pozostałe akcje */}
                   {[
-                    { icon: <Printer size={12} />, label: {t("firma.btnPrint")} },
-                    { icon: <Share2 size={12} />, label: {t("firma.btnShare")} },
-                    { icon: <Flag size={12} />, label: {t("firma.btnReportError")} },
+                    { icon: <Printer size={12} />, label: t("firma.btnPrint") },
+                    { icon: <Share2 size={12} />, label: t("firma.btnShare") },
+                    { icon: <Flag size={12} />, label: t("firma.btnReportError") },
                     ...(krsLink ? [{ icon: <ExternalLink size={12} />, label: `Wpis w ${source}`, href: krsLink }] : []),
                   ].map((a, i) => (
                     "href" in a
