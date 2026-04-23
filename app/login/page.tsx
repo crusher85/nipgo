@@ -54,7 +54,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 56px)", padding: "24px", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "24px", fontFamily: "'DM Sans', system-ui, sans-serif", background: dark ? "#0a0a0a" : "#f0f2f5" }}>
       <div style={{ width: "100%", maxWidth: 400, background: cardBg, border: `1px solid ${borderColor}`, borderRadius: 20, padding: "40px 36px", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
 
         <div style={{ textAlign: "center", marginBottom: 32 }}>

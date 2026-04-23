@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useState } from "react"
 import { useTheme } from "@/components/ThemeProvider"
+import { useT } from "@/lib/i18n"
 import { Check, X, Zap, Shield, Download, Brain, ChevronDown, Sparkles } from "lucide-react"
 
 type Period = "monthly" | "yearly"
@@ -16,7 +17,7 @@ const PLANS = [
     desc: "Do przeglądania i weryfikacji",
     color: "#6b7280",
     popular: false,
-    cta: "Zacznij za darmo",
+    cta: t("pricing.ctaFree"),
     ctaHref: "/rejestracja",
     trial: null,
     features: [
@@ -38,7 +39,7 @@ const PLANS = [
     desc: "Dla handlowców i małych zespołów",
     color: "#2563eb",
     popular: true,
-    cta: "Zacznij Basic",
+    cta: t("pricing.ctaBasic"),
     ctaHref: "/rejestracja?plan=basic",
     trial: "🎁 Pierwsze 7 dni na poziomie Pro — w cenie Basic",
     features: [
@@ -60,7 +61,7 @@ const PLANS = [
     desc: "Dla działów sprzedaży i agencji",
     color: "#7c3aed",
     popular: false,
-    cta: "Zacznij Pro",
+    cta: t("pricing.ctaPro"),
     ctaHref: "/rejestracja?plan=pro",
     trial: null,
     features: [
@@ -133,6 +134,7 @@ function FaqItem({ q, a, dark }: { q: string; a: string; dark: boolean }) {
 }
 
 export default function CennikPage() {
+  const t = useT()
   const { theme } = useTheme()
   const dark = theme === "dark"
   const [period, setPeriod] = useState<Period>("monthly")
@@ -170,7 +172,7 @@ export default function CennikPage() {
             {(["monthly", "yearly"] as Period[]).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
                 style={{ padding: "8px 20px", fontSize: 13, fontWeight: 500, borderRadius: 8, border: "none", cursor: "pointer", transition: "all 0.15s", background: period === p ? (dark ? "#222" : "#fff") : "transparent", color: period === p ? textColor : mutedColor, boxShadow: period === p ? "0 1px 4px rgba(0,0,0,0.1)" : "none" }}>
-                {p === "monthly" ? "Miesięcznie" : <span>Rocznie <span style={{ fontSize: 11, fontWeight: 700, color: "#22c55e", marginLeft: 4 }}>-12%</span></span>}
+                {p === "monthly" ? t("pricing.toggleMonthly") : <span>Rocznie <span style={{ fontSize: 11, fontWeight: 700, color: "#22c55e", marginLeft: 4 }}>-12%</span></span>}
               </button>
             ))}
           </div>
