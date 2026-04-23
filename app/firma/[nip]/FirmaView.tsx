@@ -1,797 +1,801 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useTheme } from "@/components/ThemeProvider"
+import { createClient } from "@/lib/supabase/client"
 import {
-  ChevronLeft,
-  Download,
-  Printer,
-  Share2,
-  Lock,
-  ExternalLink,
-  MapPin,
-  Users,
-  Briefcase,
-  CircleDollarSign,
-  AlertTriangle,
-  FileText,
-  Flag,
+  ChevronLeft, Download, Bell, BellOff, Lock, ExternalLink,
+  MapPin, Users, Briefcase, CircleDollarSign,
+  AlertTriangle, Share2, Printer,
+  Flag, TrendingUp, Shield, Globe,
+  Building2, Calendar, User, Zap, Sparkles, Search, Check,
 } from "lucide-react"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type Tab = "podstawowe" | "finanse" | "ryzyko" | "aktywnosc" | "dotacje"
-
+type Tab = "podstawowe" | "finanse" | "ryzyko" | "sygnaly" | "dotacje"
 interface Rep { name: string; fn: string }
 interface Shareholder { name: string; shares: string }
 interface PkdCode { code: string; description: string; isPrimary: boolean }
 
 export interface FirmaViewProps {
-  nip: string
-  name: string
-  regon: string
-  krs: string
-  statusKrs: string
-  status: "active" | "inactive"
-  legalForm: string
-  source: "KRS" | "CEIDG"
-  rejestr: string
-  registrationDate: string
-  capital: string
-  currency: string
-  address: {
-    street: string
-    city: string
-    postalCode: string
-    voivodeship: string
-    county: string
-    commune: string
-    full: string
-  }
-  contact: { phone: string; email: string; website: string }
-  representationMethod: string
-  representatives: Rep[]
-  prokurenci: Rep[]
-  radaNadzorcza: Rep[]
-  shareholders: Shareholder[]
-  pkdCodes: PkdCode[]
-  krsLink: string
-  ownerName: string
-  restrukturyzacja: any
-  financialReports: any[]
+  nip: string; name: string; regon: string; krs: string; statusKrs: string; statusDodatkowy: string
+  status: "active" | "inactive"; legalForm: string; formaWlasnosci: string; source: "KRS" | "CEIDG"
+  rejestr: string; registrationDate: string; dataZawieszenia: string; dataWznowienia: string; dataZakonczenia: string
+  capital: string; currency: string; ostatnieSprRok: number | null; celDzialania: string
+  address: { street: string; city: string; postalCode: string; voivodeship: string; county: string; commune: string; full: string }
+  contact: { phone: string; phoneMobile: string; email: string; website: string; facebook: string; googleRating: number | null }
+  representationMethod: string; representatives: Rep[]; prokurenci: Rep[]; radaNadzorcza: Rep[]
+  shareholders: Shareholder[]; pkdCodes: PkdCode[]; krsLink: string; ownerName: string
+  ownerGender: 'M' | 'F' | null; ownerCitizenship: string | null; organRejestrowy: string; liczbaPracownikow: string
+  flagaRyzyka: boolean; flagaAktywaDotacja: boolean; czyNieruchomoscWlasna: boolean; sumaPomocyEur: number | null
+  oddzialy: string[]; historiaPrzeksztalcen: string[]; restrukturyzacja: any; financialReports: any[]
+  vatStatus: string | null; vatRisk: boolean; accountNumbers: string[]
+  zakazyInfo?: string | null; uprawieniaInfo?: string | null
+  wspolnoscMajatkowa: boolean | null; adresDoreczenia: string | null
+  kontekst?: { pkd_count_miasto: number | null; pkd_count_woj: number | null; kapital_percentyl: number | null; wiek_percentyl: number | null } | null
 }
 
-// ─── Formatters ───────────────────────────────────────────────────────────────
-
-// Per brief: capitalize first letter of each word (split/map)
-function formatCompanyName(name: string): string {
+function sc(s: string | null | undefined): string {
+  if (!s) return ""; const l = s.toLowerCase(); return l.charAt(0).toUpperCase() + l.slice(1)
+}
+function fmtCompanyName(name: string): string {
   if (!name) return ""
-  return name
-    .toLowerCase()
-    .split(" ")
-    .map(w => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
-    .join(" ")
+  const titled = name.toLowerCase().replace(/\b\p{L}/gu, c => c.toUpperCase())
+  return titled.replace(/Spółka Z Ograniczoną Odpowiedzialnością/gi, "Spółka z ograniczoną odpowiedzialnością")
+    .replace(/\bSp\.\s*Z\s*O\.O\./gi, "sp. z o.o.").replace(/\bS\.A\./gi, "S.A.")
+    .replace(/\bSp\.J\./gi, "sp.j.").replace(/\bSp\.K\./gi, "sp.k.")
 }
-
-// First letter of first word capitalized only
-function sentenceCase(s: string | null | undefined): string {
-  if (!s) return ""
-  const l = s.toLowerCase()
-  return l.charAt(0).toUpperCase() + l.slice(1)
-}
-
-// DD.MM.YYYY
 function fmtDate(s: string | null | undefined): string {
-  if (!s) return ""
-  const d = new Date(s)
-  if (isNaN(d.getTime())) return s
+  if (!s) return ""; const d = new Date(s); if (isNaN(d.getTime())) return s
   return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`
 }
-
-// "5 000 PLN"
 function fmtCapital(amount: string, currency: string): string {
-  const n = Number(amount)
-  if (!amount || isNaN(n)) return ""
+  const n = Number(amount); if (!amount || isNaN(n)) return ""
   return `${n.toLocaleString("pl-PL")} ${currency || "PLN"}`
 }
-
-// Fix common address formatting artifacts
-function fmtAddress(s: string | null | undefined): string {
-  if (!s) return ""
-  let r = s.toLowerCase().replace(/\s+\//g, "/")
-  r = r.replace(/,\s*[\p{L}\s-]+?,\s*(\d{2}-\d{3})/u, ", $1")
-  r = r.replace(/\bul\.\s+(\p{L})/gu, (_, l) => "ul. " + l.toUpperCase())
-  r = r.replace(/(\d{2}-\d{3}\s+)(\p{L})/gu, (_, code, l) => code + l.toUpperCase())
-  return r.replace(/^(\p{L})/u, l => l.toUpperCase())
-}
-
-// Names with * are already masked — show as-is; others get title-case
 function fmtPerson(name: string): string {
-  if (!name) return ""
-  if (name.includes("*")) return name
-  return name
-    .toLowerCase()
-    .replace(/\b\p{L}/gu, c => c.toUpperCase())
+  if (!name) return ""; if (name.includes("*")) return name
+  return name.toLowerCase().replace(/\b\p{L}/gu, c => c.toUpperCase())
 }
-
-// Parse "50%" or "50 udziałów" → number
+function fmtShares(shares: string): string {
+  if (!shares) return ""
+  return shares.replace(/udziałów o łącznej wartości/gi, "udz. /").replace(/udziału o łącznej wartości/gi, "udz. /")
+    .replace(/,00\s*ZŁ/gi, " zł").replace(/,00\s*zł/gi, " zł").replace(/\s+/g, " ").trim()
+}
+function formatRegon(r: string): string { return r && r.endsWith("00000") ? r.slice(0, 9) : r }
 function parsePct(s: string): number {
   const pct = s.match(/(\d+(?:[.,]\d+)?)\s*%/)
   if (pct) return parseFloat(pct[1].replace(",", "."))
-  const num = s.match(/(\d+)/)
-  return num ? parseFloat(num[1]) : 0
+  const num = s.match(/(\d+)/); return num ? parseFloat(num[1]) : 0
 }
-
-function maskPhone(p: string): string {
-  const d = p.replace(/\D/g, "")
-  return d.length >= 9 ? `+48 ${d.slice(-9, -6)} *** ***` : "+48 *** *** ***"
+function formatAge(dateStr: string | null | undefined): { label: string; color: string; bg: string } | null {
+  if (!dateStr) return null; const reg = new Date(dateStr); if (isNaN(reg.getTime())) return null
+  const days = Math.floor((Date.now() - reg.getTime()) / (1000 * 60 * 60 * 24))
+  const months = Math.floor(days / 30.44); const years = Math.floor(days / 365.25)
+  let label: string
+  if (days < 30) label = `${days} dni`
+  else if (months < 12) label = `${months} mies.`
+  else if (years === 1) label = `1 rok`
+  else if (years < 5) label = `${years} lata`
+  else label = `${years} lat`
+  let color: string, bg: string
+  if (days < 365) { color = "#f59e0b"; bg = "#fffbeb" }
+  else if (years < 3) { color = "#f97316"; bg = "#fff7ed" }
+  else if (years < 10) { color = "#2563eb"; bg = "#eff6ff" }
+  else { color = "#16a34a"; bg = "#f0fdf4" }
+  return { label, color, bg }
 }
-
-function maskEmail(e: string): string {
-  const [local = "", domain = ""] = e.split("@")
-  const parts = domain.split(".")
-  return `${local[0] ?? "k"}***@${parts[0]?.[0] ?? "f"}***.${parts.slice(1).join(".")}`
+function countryCodeToFlag(code: string | null | undefined): string {
+  if (!code || code.length !== 2) return ""
+  return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)))
 }
-
-function maskWebsite(w: string): string {
-  const clean = w.replace(/^https?:\/\//, "").replace(/^www\./, "")
-  return `www.${clean[0] ?? "f"}***`
+function countryCodeToName(code: string | null | undefined): string {
+  if (!code) return ""
+  const names: Record<string, string> = {
+    PL: "Polska", DE: "Niemcy", UA: "Ukraina", BY: "Białoruś", RU: "Rosja",
+    VN: "Wietnam", CN: "Chiny", IN: "Indie", GB: "Wielka Brytania", FR: "Francja",
+    IT: "Włochy", NL: "Holandia", CZ: "Czechy", SK: "Słowacja", RO: "Rumunia",
+  }
+  return names[code.toUpperCase()] || code
 }
-
-function formatRegon(r: string): string {
-  return r && r.endsWith("00000") ? r.slice(0, 9) : r
+function resolveVatStatus(vatStatus: string | null): { label: string; color: string } {
+  if (!vatStatus) return { label: "Brak danych", color: "#9ca3af" }
+  const s = vatStatus.toLowerCase()
+  if (s.includes("czynny")) return { label: "Czynny", color: "#22c55e" }
+  if (s.includes("zwolni")) return { label: vatStatus, color: "#f59e0b" }
+  if (s.includes("wyrejestr") || s.includes("wykres")) return { label: vatStatus, color: "#ef4444" }
+  return { label: vatStatus, color: "#6b7280" }
 }
-
-// ─── Status badge ──────────────────────────────────────────────────────────────
-
-function resolveStatus(statusKrs: string): { label: string; cls: string } {
+function resolveStatus(statusKrs: string): { label: string; color: string } {
   const s = (statusKrs || "").toLowerCase()
-  if (s.includes("aktywn"))    return { label: "Aktywny",   cls: "bg-blue-50 text-blue-700" }
-  if (s.includes("wykres"))    return { label: statusKrs,   cls: "bg-red-50 text-red-700" }
-  if (s.includes("likwidacj")) return { label: statusKrs,   cls: "bg-amber-50 text-amber-700" }
-  return { label: statusKrs || "Nieznany", cls: "bg-gray-100 text-gray-500" }
+  if (s.includes("aktywn")) return { label: "Aktywny", color: "#22c55e" }
+  if (s.includes("wykres")) return { label: statusKrs, color: "#ef4444" }
+  if (s.includes("likwidacj")) return { label: statusKrs, color: "#f59e0b" }
+  if (s.includes("zawiesz")) return { label: "Zawieszona", color: "#f59e0b" }
+  return { label: statusKrs || "Nieznany", color: "#6b7280" }
+}
+function getInitials(name: string): string {
+  return name.replace(/[*]/g, "").split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")
+}
+function formatIban(account: string): string {
+  const digits = account.replace(/\D/g, "")
+  if (digits.length === 26) {
+    return `PL ${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6, 10)} ${digits.slice(10, 14)} ${digits.slice(14, 18)} ${digits.slice(18, 22)} ${digits.slice(22, 26)}`
+  }
+  return account
 }
 
-// ─── Tabs config ─────────────────────────────────────────────────────────────
-
-const TABS: { key: Tab; label: string; pro: boolean }[] = [
-  { key: "podstawowe", label: "Podstawowe", pro: false },
-  { key: "finanse",    label: "Finanse",    pro: true  },
-  { key: "ryzyko",     label: "Ryzyko",     pro: true  },
-  { key: "aktywnosc",  label: "Aktywność",  pro: true  },
-  { key: "dotacje",    label: "Dotacje UE", pro: true  },
-]
-
-const PRO_DESC: Partial<Record<Tab, string>> = {
-  finanse:   "Sprawozdania finansowe, wyniki, zadłużenie",
-  ryzyko:    "Scoring kredytowy, powiązania, alerty",
-  aktywnosc: "Historia zmian, ogłoszenia, przetargi",
-  dotacje:   "Dotacje UE i krajowe, projekty unijne",
+function pkdToSektor(code: string): string {
+  const prefix = code.replace(/\./g, "").slice(0, 2)
+  const map: Record<string, string> = {
+    "01": "gospodarstw rolnych", "10": "firm spożywczych", "11": "browarów i wytwórni",
+    "14": "firm odzieżowych", "16": "tartaków i stolarni", "20": "firm chemicznych",
+    "22": "firm z branży tworzyw", "25": "firm metalowych", "28": "producentów maszyn",
+    "33": "serwisów technicznych", "35": "firm energetycznych", "38": "firm recyklingowych",
+    "41": "firm budowlanych", "42": "firm inżynieryjnych", "43": "firm remontowych",
+    "45": "firm motoryzacyjnych", "46": "hurtowni", "47": "sklepów detalicznych",
+    "49": "firm transportowych", "52": "firm logistycznych", "55": "hoteli",
+    "56": "restauracji i gastronomii", "58": "wydawnictw", "61": "operatorów telco",
+    "62": "firm IT", "63": "firm technologicznych", "64": "instytucji finansowych",
+    "68": "firm nieruchomości", "69": "kancelarii prawnych", "70": "firm doradczych",
+    "71": "biur projektowych", "72": "instytutów badawczych", "73": "agencji reklamowych",
+    "74": "firm kreatywnych", "77": "firm wynajmu", "78": "agencji pracy",
+    "79": "biur podróży", "80": "firm ochroniarskich", "81": "firm sprzątających",
+    "82": "biur obsługi firm", "85": "szkół i placówek edukacyjnych",
+    "86": "placówek medycznych", "87": "domów opieki", "90": "firm kulturalnych",
+    "93": "obiektów sportowych", "96": "salonów i usług osobistych",
+  }
+  return map[prefix] || "firm tej branży"
 }
 
-// ─── Tiny components ─────────────────────────────────────────────────────────
-
-function Badge({ label, cls }: { label: string; cls: string }) {
-  return (
-    <span className={`inline-block text-xs font-medium rounded-full px-3 py-0.5 ${cls}`}>
-      {label}
-    </span>
-  )
+function makeS(dark: boolean) {
+  const card = dark ? "#111111" : "#ffffff"
+  const border = dark ? "#1e1e1e" : "#e8eaed"
+  const borderLight = dark ? "#161616" : "#f3f4f6"
+  const text = dark ? "#f5f5f5" : "#111"
+  const textMuted = dark ? "#555" : "#9ca3af"
+  const textValue = dark ? "#e5e5e5" : "#111827"
+  const btnOutlineBg = dark ? "transparent" : "#fff"
+  const btnOutlineBorder = dark ? "#2a2a2a" : "#e5e7eb"
+  const btnOutlineColor = dark ? "#aaa" : "#374151"
+  return {
+    card: { background: card, border: `1px solid ${border}`, borderRadius: 16, overflow: "hidden", marginBottom: 16 } as React.CSSProperties,
+    cardHeader: { padding: "14px 20px", borderBottom: `1px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "space-between" } as React.CSSProperties,
+    label: { fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: textMuted, fontWeight: 600 } as React.CSSProperties,
+    fieldRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "11px 20px", borderBottom: `1px solid ${borderLight}`, gap: 16 } as React.CSSProperties,
+    fieldLabel: { fontSize: 12, color: textMuted, letterSpacing: "0.05em", textTransform: "uppercase" as const, minWidth: 140, flexShrink: 0 } as React.CSSProperties,
+    fieldValue: { fontSize: 14, color: textValue, textAlign: "right" as const } as React.CSSProperties,
+    btnOutline: { display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 16px", fontSize: 13, fontWeight: 500, border: `1px solid ${btnOutlineBorder}`, borderRadius: 10, background: btnOutlineBg, color: btnOutlineColor, cursor: "pointer" } as React.CSSProperties,
+    btnPrimary: { display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, border: "none", borderRadius: 10, background: "#2563eb", color: "#fff", cursor: "pointer" } as React.CSSProperties,
+    avatar: { width: 36, height: 36, borderRadius: "50%", background: dark ? "#1a2444" : "#eff6ff", border: `1px solid ${dark ? "#2a3a6a" : "#bfdbfe"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: dark ? "#6b8cff" : "#2563eb", flexShrink: 0 } as React.CSSProperties,
+    border, borderLight, text, textMuted, textValue,
+  }
 }
 
-// Avatar with initials — bg-blue-50 text-blue-600 rounded-full w-8 h-8 per brief
-function Avatar({ name }: { name: string }) {
-  const cleaned = name.replace(/[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ\s]/g, "")
-  const initials = cleaned
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(w => w[0]?.toUpperCase() ?? "")
-    .join("")
-  return (
-    <span className="bg-blue-50 text-blue-600 rounded-full w-8 h-8 flex items-center justify-center text-xs font-semibold shrink-0 select-none">
-      {initials || "?"}
-    </span>
-  )
-}
-
-// Card wrapper — rounded-xl border border-[#e5e7eb] bg-white
-function Card({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode
-  className?: string
-}) {
-  return (
-    <div className={`bg-white rounded-xl border border-[#e5e7eb] overflow-hidden mb-4 ${className}`}>
-      {children}
-    </div>
-  )
-}
-
-// Card title row — always p-5, border-b
-function CardHeader({ title, action }: { title: string; action?: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between px-5 py-4 border-b border-[#e5e7eb]">
-      <h2 className="text-xs font-medium uppercase tracking-widest text-gray-400">{title}</h2>
-      {action}
-    </div>
-  )
-}
-
-// Single label/value field row
-function Field({
-  label,
-  value,
-  children,
-}: {
-  label: string
-  value?: string | null
-  children?: React.ReactNode
-}) {
+function Field({ label, value, children, S }: { label: string; value?: string | null; children?: React.ReactNode; S: ReturnType<typeof makeS> }) {
   const content = children ?? value
   if (!content && content !== 0) return null
   return (
-    <div className="flex gap-6 px-5 py-3 border-b border-[#e5e7eb] last:border-0">
-      <dt className="text-xs font-medium uppercase tracking-widest text-gray-400 w-36 shrink-0 leading-5 pt-px">
-        {label}
-      </dt>
-      <dd className="text-sm text-gray-900 leading-5 min-w-0">{content}</dd>
+    <div style={S.fieldRow}>
+      <span style={S.fieldLabel}>{label}</span>
+      <span style={S.fieldValue}>{content}</span>
     </div>
   )
 }
 
-// Person row with avatar
-function PersonRow({ rep }: { rep: Rep }) {
+function PersonRow({ rep, S }: { rep: Rep; S: ReturnType<typeof makeS> }) {
   return (
-    <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#e5e7eb] last:border-0">
-      <Avatar name={rep.name} />
-      <div className="min-w-0">
-        <p className="text-sm text-gray-900 truncate">{fmtPerson(rep.name)}</p>
-        {rep.fn && (
-          <p className="text-xs text-gray-400 mt-0.5 truncate">{sentenceCase(rep.fn)}</p>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: `1px solid ${S.borderLight}` }}>
+      <div style={S.avatar}>{getInitials(rep.name) || "?"}</div>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ fontSize: 14, color: S.textValue, margin: 0 }}>{fmtPerson(rep.name)}</p>
+        {rep.fn && <p style={{ fontSize: 12, color: "#9ca3af", margin: "2px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>{rep.fn}</p>}
+      </div>
+    </div>
+  )
+}
+
+function ProBadge({ dark }: { dark: boolean }) {
+  return <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: dark ? "#1a1060" : "#ede9fe", color: dark ? "#7c6fff" : "#7c3aed", padding: "2px 7px", borderRadius: 4, marginLeft: 6, textTransform: "uppercase" as const }}>PRO</span>
+}
+function FreeBadge({ dark }: { dark: boolean }) {
+  return <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: dark ? "#0d2218" : "#dcfce7", color: dark ? "#22c55e" : "#16a34a", padding: "2px 7px", borderRadius: 4, marginLeft: 6, textTransform: "uppercase" as const }}>free</span>
+}
+
+function ProPaywall({ dark, S, desc }: { dark: boolean; S: ReturnType<typeof makeS>; desc: string }) {
+  return (
+    <div style={{ position: "relative", minHeight: 360, borderRadius: 16, overflow: "hidden", border: `1px solid ${dark ? "#1a1a1a" : "#e8eaed"}`, background: dark ? "#0d0d0d" : "#f9fafb" }}>
+      <div style={{ padding: 32, filter: "blur(2px)", pointerEvents: "none", userSelect: "none" }}>
+        {[60, 80, 50, 70, 40].map((w, i) => <div key={i} style={{ height: i === 0 ? 20 : 12, width: `${w}%`, background: dark ? "#1a1a1a" : "#e5e7eb", borderRadius: 4, marginBottom: 16 }} />)}
+      </div>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: dark ? "rgba(10,10,10,0.9)" : "rgba(255,255,255,0.9)", backdropFilter: "blur(4px)", zIndex: 10 }}>
+        <Lock size={24} color={dark ? "#222" : "#d1d5db"} style={{ marginBottom: 16 }} />
+        <p style={{ fontSize: 20, fontWeight: 400, letterSpacing: "-0.02em", color: dark ? "#fff" : "#111", marginBottom: 8 }}>Dostępne w planie Pro</p>
+        <p style={{ fontSize: 13, color: S.textMuted, marginBottom: 28, textAlign: "center", maxWidth: 320 }}>{desc}</p>
+        <Link href="/cennik" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 28px", fontSize: 14, fontWeight: 600, border: "none", borderRadius: 10, background: "#2563eb", color: "#fff", textDecoration: "none" }}>
+          Odblokuj za 119 zł/mies.
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function KontekstRow({ kontekst, city, voivodeship, pkdCode, dark, S, isPro }: {
+  kontekst: FirmaViewProps['kontekst']
+  city: string; voivodeship: string; pkdCode: string
+  dark: boolean; S: ReturnType<typeof makeS>; isPro: boolean
+}) {
+  const cityName = sc(city) || "mieście"
+  const vojName = sc(voivodeship) || "województwie"
+  const pkdShort = pkdCode?.split(/[\s—]/)[0] || ""
+  const countMiasto = kontekst?.pkd_count_miasto ?? null
+  const countWoj = kontekst?.pkd_count_woj ?? null
+
+  const searchMiasto = `/search?pkd=${pkdShort}&miasto=${encodeURIComponent(city)}`
+  const searchWoj = `/search?pkd=${pkdShort}&wojewodztwo=${encodeURIComponent(voivodeship)}`
+
+  if (countMiasto === null && countWoj === null) return null
+
+  function getComment(n: number): { text: string; color: string } {
+    if (n === 1) return { text: "Jedyna firma tej branży", color: "#16a34a" }
+    if (n <= 5) return { text: "Bardzo mała konkurencja", color: "#16a34a" }
+    if (n <= 20) return { text: "Niszowy rynek", color: "#f59e0b" }
+    return { text: "Konkurencyjny rynek", color: "#ef4444" }
+  }
+
+  const statCards = [
+    countMiasto !== null ? { count: countMiasto, label: `podobne firmy w ${cityName}`, comment: getComment(countMiasto), url: searchMiasto } : null,
+    countWoj !== null ? { count: countWoj, label: `podobne firmy w woj. ${vojName}`, comment: null, url: searchWoj } : null,
+  ].filter(Boolean) as any[]
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
+      <div style={{ background: dark ? "#0d0d0d" : "#fff", border: `1px solid ${dark ? "#1a1a1a" : "#e8eaed"}`, borderRadius: 14, padding: "16px 20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        {statCards.map((card, i) => (
+          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <p style={{ fontSize: 32, fontWeight: 300, letterSpacing: "-0.04em", color: dark ? "#fff" : "#111", margin: 0, lineHeight: 1 }}>
+              {card.count.toLocaleString("pl-PL")}
+            </p>
+            <p style={{ fontSize: 12, color: dark ? "#888" : "#6b7280", margin: 0, lineHeight: 1.4 }}>{card.label}</p>
+            {card.comment && (
+              <p style={{ fontSize: 11, fontWeight: 600, color: card.comment.color, margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: card.comment.color, display: "inline-block" }} />
+                {card.comment.text}
+              </p>
+            )}
+            <Link href={card.url} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "#2563eb", marginTop: "auto", textDecoration: "none" }}>
+              <Search size={11} /> Zobacz firmy →
+            </Link>
+          </div>
+        ))}
+      </div>
+      <div style={{ position: "relative", background: dark ? "#0d0d0d" : "#fff", border: `1px solid ${dark ? "#1a1a1a" : "#e8eaed"}`, borderRadius: 14, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 8, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <p style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: S.textMuted, fontWeight: 600, margin: 0 }}>Opis AI</p>
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: dark ? "#1a1060" : "#ede9fe", color: dark ? "#7c6fff" : "#7c3aed", padding: "2px 7px", borderRadius: 4, textTransform: "uppercase" as const }}>PRO</span>
+        </div>
+        <div style={{ filter: isPro ? "none" : "blur(3px)", pointerEvents: isPro ? "auto" : "none" }}>
+          <p style={{ fontSize: 13, color: dark ? "#555" : "#d1d5db", margin: 0, lineHeight: 1.6, fontStyle: "italic" }}>
+            Firma działa w branży marketingu i reklamy, specjalizując się w obsłudze klientów B2B...
+          </p>
+        </div>
+        {!isPro && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: dark ? "rgba(10,10,10,0.85)" : "rgba(255,255,255,0.85)", backdropFilter: "blur(3px)", borderRadius: 14, gap: 8, zIndex: 10 }}>
+            <Sparkles size={18} color="#7c3aed" />
+            <p style={{ fontSize: 13, fontWeight: 500, color: dark ? "#aaa" : "#374151", margin: 0, textAlign: "center" }}>Opisy AI w planie Pro</p>
+            <Link href="/cennik" style={{ fontSize: 12, color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>Odblokuj za 119 zł/mies.</Link>
+          </div>
         )}
       </div>
     </div>
   )
 }
 
-// Sidebar section wrapper — p-5 per brief
-function SideCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-xl border border-[#e5e7eb] p-5">
-      <h3 className="text-xs font-medium uppercase tracking-widest text-gray-400 mb-4">{title}</h3>
-      {children}
-    </div>
-  )
-}
-
-// Outline button
-function Btn({
-  children,
-  href,
-  variant = "outline",
-  className = "",
-  onClick,
-}: {
-  children: React.ReactNode
-  href?: string
-  variant?: "outline" | "solid"
-  className?: string
-  onClick?: () => void
-}) {
-  const base = "inline-flex items-center gap-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-  const styles =
-    variant === "solid"
-      ? "bg-blue-600 text-white hover:bg-blue-700 px-4 py-2"
-      : "border border-[#e5e7eb] bg-white text-gray-700 hover:bg-gray-50 px-4 py-2"
-
-  if (href) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={`${base} ${styles} ${className}`}>
-        {children}
-      </a>
-    )
-  }
-  return (
-    <button onClick={onClick} className={`${base} ${styles} ${className}`}>
-      {children}
-    </button>
-  )
-}
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
 export function FirmaView(props: FirmaViewProps) {
   const [tab, setTab] = useState<Tab>("podstawowe")
+  const [userPlan, setUserPlan] = useState<string>("free")
+  const [userId, setUserId] = useState<string | null>(null)
+  const [isMonitored, setIsMonitored] = useState(false)
+  const [monitorLoading, setMonitorLoading] = useState(false)
+  const [monitorToast, setMonitorToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const { theme } = useTheme()
+  const dark = theme === "dark"
+  const S = makeS(dark)
 
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      setUserId(user.id)
+      const [{ data: profile }, { data: monitored }] = await Promise.all([
+        supabase.from("user_profiles").select("plan").eq("id", user.id).single(),
+        supabase.from("monitored_firms").select("id").eq("user_id", user.id).eq("nip", props.nip).maybeSingle(),
+      ])
+      if (profile) setUserPlan(profile.plan)
+      setIsMonitored(!!monitored)
+    })
+  }, [props.nip])
+
+  async function handleMonitor() {
+    const supabase = createClient()
+    if (!userId) {
+      window.location.href = "/login"
+      return
+    }
+    setMonitorLoading(true)
+    if (isMonitored) {
+      await supabase.rpc("remove_from_monitoring", { p_nip: props.nip })
+      setIsMonitored(false)
+      showToast("Usunięto z monitoringu", true)
+    } else {
+      const { data } = await supabase.rpc("add_to_monitoring", { p_nip: props.nip })
+      if (data?.ok) {
+        setIsMonitored(true)
+        showToast("Dodano do monitoringu", true)
+      } else if (data?.error === "limit") {
+        showToast(`Limit monitoringu (${data.limit} firm) osiągnięty`, false)
+      } else if (data?.error === "not_found") {
+        showToast("Nie znaleziono firmy w bazie", false)
+      } else {
+        showToast("Błąd — spróbuj ponownie", false)
+      }
+    }
+    setMonitorLoading(false)
+  }
+
+  function showToast(msg: string, ok: boolean) {
+    setMonitorToast({ msg, ok })
+    setTimeout(() => setMonitorToast(null), 3000)
+  }
+
+  const isPro = userPlan === "basic" || userPlan === "pro"
+  const isCEIDG = props.source === "CEIDG"
   const {
-    nip, name, regon, krs, statusKrs, legalForm, source, rejestr,
-    registrationDate, capital, currency,
-    address, contact,
-    representationMethod,
-    representatives, prokurenci, radaNadzorcza,
-    shareholders, pkdCodes,
-    krsLink, ownerName,
-    restrukturyzacja, financialReports,
+    nip, name, regon, krs, statusKrs, legalForm, formaWlasnosci, source,
+    registrationDate, dataZawieszenia, dataWznowienia, dataZakonczenia,
+    capital, currency, ostatnieSprRok, celDzialania, address, contact,
+    representationMethod, representatives, prokurenci, radaNadzorcza,
+    shareholders, pkdCodes, krsLink, ownerName, ownerGender, ownerCitizenship,
+    organRejestrowy, liczbaPracownikow, flagaRyzyka, restrukturyzacja,
+    vatStatus, vatRisk, accountNumbers, zakazyInfo, uprawieniaInfo,
+    wspolnoscMajatkowa, adresDoreczenia, kontekst,
   } = props
 
-  // Derived values
-  const statusBadge    = resolveStatus(statusKrs)
-  const year           = registrationDate ? new Date(registrationDate).getFullYear() : null
-  const capitalFmt     = capital ? fmtCapital(capital, currency) : null
-  const mapQ           = encodeURIComponent(address.full || `${address.street}, ${address.postalCode} ${address.city}`)
-  const primaryPkd     = pkdCodes.find(p => p.isPrimary)
-  const hasContact     = contact.phone || contact.email || contact.website
-  const shareholderVal = shareholders.length > 0
-    ? String(shareholders.length)
-    : ownerName ? fmtPerson(ownerName) : "—"
-
-  // Shareholders bar chart data
-  const shareVals  = shareholders.map(s => parsePct(s.shares))
+  const formaWlasnosciDisplay = isCEIDG ? "Jednoosobowa działalność gospodarcza" : (formaWlasnosci ? sc(formaWlasnosci) : null)
+  const st = resolveStatus(statusKrs)
+  const age = formatAge(registrationDate)
+  const vat = resolveVatStatus(vatStatus)
+  const capitalFmt = capital ? fmtCapital(capital, currency) : null
+  const mapQ = encodeURIComponent(address.full || `${address.street}, ${address.postalCode} ${address.city}`)
+  const primaryPkd = pkdCodes.find(p => p.isPrimary)
+  const shareVals = shareholders.map(s => parsePct(s.shares))
   const shareTotal = shareVals.reduce((a, b) => a + b, 0)
-  const maxShare   = Math.max(...shareVals, 0)
+  const maxShare = Math.max(...shareVals, 0)
+  const hasVatSection = vatStatus !== null
+  const hasAccounts = accountNumbers.length > 0
+  const flag = countryCodeToFlag(ownerCitizenship)
+  const citizenshipName = countryCodeToName(ownerCitizenship)
+  const genderIcon = ownerGender === 'F' ? '♀' : ownerGender === 'M' ? '♂' : null
+  const genderColor = ownerGender === 'F' ? '#ec4899' : '#2563eb'
+  const hasPrivateSection = isCEIDG && (wspolnoscMajatkowa !== null || !!adresDoreczenia)
+  const displayName = fmtCompanyName(name)
+  const pkdCode = primaryPkd?.code || ''
+
+  const kpiItems = isCEIDG ? [
+    { icon: <User size={14} color="#2563eb" />, label: "Właściciel", value: ownerName ? fmtPerson(ownerName) : "—" },
+    { icon: <MapPin size={14} color="#2563eb" />, label: "Siedziba", value: sc(address.city) || "—", sub: [address.county, address.voivodeship].filter(Boolean).map(sc).join(", ") },
+    { icon: <Building2 size={14} color="#2563eb" />, label: "Forma własności", value: "JDG" },
+    { icon: <Briefcase size={14} color="#2563eb" />, label: "PKD główne", value: primaryPkd ? primaryPkd.code : "—", sub: primaryPkd ? sc(primaryPkd.description)?.split(" ").slice(0, 4).join(" ") : "" },
+  ] : [
+    { icon: <CircleDollarSign size={14} color="#2563eb" />, label: "Kapitał", value: capitalFmt || "—" },
+    { icon: <MapPin size={14} color="#2563eb" />, label: "Siedziba", value: sc(address.city) || "—", sub: [address.county, address.voivodeship].filter(Boolean).map(sc).join(", ") },
+    { icon: <Users size={14} color="#2563eb" />, label: "Wspólnicy", value: shareholders.length > 0 ? String(shareholders.length) : "—" },
+    { icon: <Briefcase size={14} color="#2563eb" />, label: "PKD główne", value: primaryPkd ? primaryPkd.code : "—", sub: primaryPkd ? sc(primaryPkd.description)?.split(" ").slice(0, 4).join(" ") : "" },
+  ]
+
+  const TABS: { key: Tab; label: string; sub: string; pro: boolean; icon: React.ReactNode }[] = [
+    { key: "podstawowe", label: "Podstawowe", sub: "Dane rejestrowe", pro: false, icon: <Building2 size={14} /> },
+    { key: "finanse",    label: "Finanse",    sub: "Sprawozdania",    pro: true,  icon: <TrendingUp size={14} /> },
+    { key: "ryzyko",     label: "Ryzyko",     sub: "Scoring",         pro: true,  icon: <Shield size={14} /> },
+    { key: "sygnaly",    label: "Sygnały",    sub: "Zdarzenia",       pro: true,  icon: <Zap size={14} /> },
+    { key: "dotacje",    label: "Dotacje",    sub: "Pomoc publiczna", pro: true,  icon: <Globe size={14} /> },
+  ]
+
+  const PRO_DESC: Partial<Record<Tab, string>> = {
+    finanse: "Sprawozdania finansowe, wyniki finansowe, bilans, zadłużenie i historia płatności",
+    ryzyko: "Scoring kredytowy, powiązania kapitałowo-osobowe, alerty zmian rejestrowych",
+    sygnaly: "Zdarzenia rejestrowe jako sygnały zakupowe — nowy zarząd, wzrost kapitału, zmiana adresu, nowe PKD",
+    dotacje: "Dotacje UE, pomoc publiczna PARP, wygrane przetargi, projekty dofinansowane",
+  }
 
   return (
-    <div className="min-h-screen bg-[#f9fafb] text-gray-900">
+    <div style={{ color: S.text, fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}>
+      <style>{`
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .ha0{animation:fadeUp 0.4s ease both} .ha1{animation:fadeUp 0.4s 0.05s ease both}
+        .ha2{animation:fadeUp 0.4s 0.1s ease both} .ha3{animation:fadeUp 0.4s 0.15s ease both}
+        .ha4{animation:fadeUp 0.4s 0.2s ease both} .ha5{animation:fadeUp 0.4s 0.25s ease both}
+        .tab-btn:hover{opacity:0.8}
+      `}</style>
 
-      {/* ══ Navbar ══════════════════════════════════════════════════════════════ */}
-      <header className="bg-white border-b border-[#e5e7eb] h-14 px-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-1.5">
-          <span className="text-[17px] font-bold tracking-tight text-gray-900">nipgo</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-        </Link>
-        <div className="flex items-center gap-2">
-          <Btn variant="outline">Zaloguj się</Btn>
-          <Btn variant="solid">Rejestracja</Btn>
+      {/* Toast */}
+      {monitorToast && (
+        <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 999, display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12, background: monitorToast.ok ? "#16a34a" : "#ef4444", color: "#fff", fontSize: 13, fontWeight: 500, boxShadow: "0 4px 16px rgba(0,0,0,0.2)", animation: "toastIn 0.2s ease" }}>
+          {monitorToast.ok ? <Check size={14} /> : <AlertTriangle size={14} />}
+          {monitorToast.msg}
         </div>
-      </header>
+      )}
 
-      {/* ══ Page body ═══════════════════════════════════════════════════════════ */}
-      <div className="max-w-[1100px] mx-auto px-6 pt-5 pb-20">
-
-        {/* Breadcrumb */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-5"
-        >
-          <ChevronLeft size={13} strokeWidth={2} />
-          Powrót do wyników
+      <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 24px 80px" }}>
+        <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "#9ca3af", marginBottom: 20, marginTop: 20, textDecoration: "none" }}>
+          <ChevronLeft size={13} /> Powrót do wyników
         </Link>
 
-        {/* ── Restrukturyzacja / upadłość ─────────────────────────────────── */}
-        {restrukturyzacja && typeof restrukturyzacja === 'object' && Object.keys(restrukturyzacja).length > 0 && (
-          <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-500" />
-            <div>
-              <p className="text-sm font-semibold text-amber-800">
-                {sentenceCase(
-                  restrukturyzacja.typ ||
-                  restrukturyzacja.rodzaj ||
-                  restrukturyzacja.typPostepowania ||
-                  "Postępowanie restrukturyzacyjne / upadłościowe"
-                )}
-              </p>
-              {Array.isArray(restrukturyzacja.likwidatorzy) &&
-                restrukturyzacja.likwidatorzy.length > 0 && (
-                  <div className="mt-2">
-                    <p className="mb-1 text-xs font-semibold text-amber-700">Likwidatorzy:</p>
-                    {restrukturyzacja.likwidatorzy.map((l: any, i: number) => (
-                      <p key={i} className="text-xs text-amber-700">
-                        {typeof l === "string"
-                          ? l
-                          : `${l.imie || ""} ${l.nazwisko || ""}`.trim() || l.nazwa || ""}
-                      </p>
-                    ))}
-                  </div>
-                )}
-            </div>
+        {restrukturyzacja && typeof restrukturyzacja === "object" && Object.keys(restrukturyzacja).length > 0 && (
+          <div style={{ display: "flex", gap: 12, padding: "12px 16px", borderRadius: 10, border: "1px solid #fde68a", background: "#fffbeb", marginBottom: 12 }}>
+            <AlertTriangle size={14} color="#f59e0b" style={{ flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: 13, color: "#92400e", margin: 0 }}>{sc(restrukturyzacja.typ || restrukturyzacja.rodzaj || "Postępowanie restrukturyzacyjne / upadłościowe")}</p>
+          </div>
+        )}
+        {vatRisk && (
+          <div style={{ display: "flex", gap: 12, padding: "12px 16px", borderRadius: 10, border: "1px solid #fecaca", background: dark ? "#1a0808" : "#fef2f2", marginBottom: 12 }}>
+            <AlertTriangle size={14} color="#ef4444" style={{ flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: 13, color: dark ? "#fca5a5" : "#991b1b", margin: 0 }}><strong>Uwaga:</strong> Firma aktywna w rejestrze, ale nie figuruje jako czynny podatnik VAT ({vatStatus}).</p>
+          </div>
+        )}
+        {zakazyInfo && (
+          <div style={{ display: "flex", gap: 12, padding: "12px 16px", borderRadius: 10, border: "1px solid #fecaca", background: dark ? "#1a0808" : "#fef2f2", marginBottom: 12 }}>
+            <AlertTriangle size={14} color="#ef4444" style={{ flexShrink: 0, marginTop: 1 }} />
+            <p style={{ fontSize: 13, color: dark ? "#fca5a5" : "#991b1b", margin: 0 }}><strong>Zakazy:</strong> {zakazyInfo}</p>
           </div>
         )}
 
-        {/* ── Company hero ─────────────────────────────────────────────────── */}
-        <div className="mb-7">
-          {/* Status + forma + rejestr badges */}
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Badge label={statusBadge.label} cls={statusBadge.cls} />
-            {legalForm && (
-              <Badge label={sentenceCase(legalForm)} cls="bg-gray-100 text-gray-500" />
-            )}
-            {rejestr === "P" && (
-              <Badge label="KRS" cls="bg-gray-100 text-gray-500" />
-            )}
-          </div>
-
-          {/* Company name — brief: split(' ').map(capitalize).join(' ') */}
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-gray-900 mb-3">
-            {name}
-          </h1>
-
-          {/* IDs row */}
-          <div className="flex flex-wrap gap-x-6 gap-y-1 mb-5">
-            <span className="text-xs text-gray-400">
-              NIP <span className="ml-0.5 font-medium text-gray-700">{nip}</span>
+        {/* Hero — czysty, bez przycisków */}
+        <div style={{ marginBottom: 20 }}>
+          <div className="ha0" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", color: st.color, background: `${st.color}18`, border: `1px solid ${st.color}33`, padding: "3px 10px", borderRadius: 100 }}>
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: st.color, display: "inline-block" }} />{st.label.toUpperCase()}
             </span>
-            {krs && (
-              <span className="text-xs text-gray-400">
-                KRS <span className="ml-0.5 font-medium text-gray-700">{krs}</span>
-              </span>
-            )}
-            {regon && (
-              <span className="text-xs text-gray-400">
-                REGON <span className="ml-0.5 font-medium text-gray-700">{formatRegon(regon)}</span>
-              </span>
-            )}
-            {year && (
-              <span className="text-xs text-gray-400">
-                od <span className="ml-0.5 font-medium text-gray-700">{year}</span>
+            {legalForm && <span style={{ fontSize: 11, fontWeight: 500, color: dark ? "#555" : "#6b7280", background: dark ? "#161616" : "#f3f4f6", border: `1px solid ${dark ? "#222" : "#e5e7eb"}`, padding: "3px 10px", borderRadius: 100 }}>{sc(legalForm)}</span>}
+            <span style={{ fontSize: 11, fontWeight: 600, color: isCEIDG ? "#16a34a" : "#2563eb", background: isCEIDG ? (dark ? "#0d2218" : "#f0fdf4") : (dark ? "#0f1f44" : "#eff6ff"), border: `1px solid ${isCEIDG ? (dark ? "#14532d" : "#bbf7d0") : (dark ? "#1a3a7a" : "#bfdbfe")}`, padding: "3px 10px", borderRadius: 100 }}>{source}</span>
+            {vatStatus && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: vat.color, background: `${vat.color}18`, border: `1px solid ${vat.color}33`, padding: "3px 10px", borderRadius: 100 }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: vat.color, display: "inline-block" }} />VAT {vat.label.toUpperCase()}
               </span>
             )}
           </div>
-
-          {/* CTA buttons */}
-          <div className="flex gap-2">
-            <Btn variant="outline"><Download size={14} />Eksportuj</Btn>
-            <Btn variant="solid">Obserwuj</Btn>
+          <h1 className="ha1" style={{ fontSize: "clamp(20px, 3vw, 32px)", fontWeight: 300, letterSpacing: "-0.03em", lineHeight: 1.15, color: dark ? "#fff" : "#111", marginBottom: 10, marginTop: 0 }}>{displayName}</h1>
+          <div className="ha2" style={{ display: "flex", flexWrap: "wrap", gap: "5px 20px", alignItems: "center" }}>
+            {[{ label: "NIP", value: nip }, ...(krs ? [{ label: "KRS", value: krs }] : []), ...(regon ? [{ label: "REGON", value: formatRegon(regon) }] : [])].map(({ label, value }) => (
+              <span key={label} style={{ fontSize: 12, color: dark ? "#444" : "#9ca3af" }}>
+                {label} <span style={{ color: dark ? "#aaa" : "#374151", fontWeight: 500, fontFamily: "'DM Mono', monospace" }}>{value}</span>
+              </span>
+            ))}
+            {age && (
+              <span style={{ fontSize: 11, fontWeight: 600, color: age.color, background: dark ? `${age.color}22` : age.bg, border: `1px solid ${age.color}33`, padding: "2px 8px", borderRadius: 100, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <Calendar size={9} />{age.label}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* ── KPI strip ────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-4 rounded-xl border border-[#e5e7eb] bg-white overflow-hidden mb-6">
-          {([
-            { icon: <CircleDollarSign size={17} className="text-gray-400" />, label: "Kapitał zakładowy", value: capitalFmt ?? "—" },
-            { icon: <MapPin           size={17} className="text-gray-400" />, label: "Siedziba",           value: sentenceCase(address.city) || "—",
-              sub: (address.county || address.voivodeship)
-                ? `${address.county ? sentenceCase(address.county) : ""}${address.voivodeship ? `, ${sentenceCase(address.voivodeship)}` : ""}`
-                : null },
-            { icon: <Users            size={17} className="text-gray-400" />, label: "Wspólnicy",          value: shareholderVal },
-            { icon: <Briefcase        size={17} className="text-gray-400" />, label: "PKD główne",         value: primaryPkd ? `${primaryPkd.code} — ${(primaryPkd.description || "").toLowerCase().split(/\s+/).filter(Boolean).slice(0, 3).join(" ")}` : "—" },
-          ]).map((kpi, i) => (
-            <div key={i} className={`p-5 ${i < 3 ? "border-r border-[#e5e7eb]" : ""}`}>
-              <div className="mb-3">{kpi.icon}</div>
-              <p className="text-xs font-medium uppercase tracking-widest text-gray-400 mb-1">{kpi.label}</p>
-              <p className="text-[17px] font-semibold text-gray-900 tracking-tight">{kpi.value}</p>
-              {"sub" in kpi && kpi.sub && (
-                <p className="text-[11px] text-gray-400 mt-0.5 leading-tight">{kpi.sub}</p>
-              )}
+        {/* KPI strip */}
+        <div className="ha3" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", background: dark ? "#111" : "#fff", border: `1px solid ${S.border}`, borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
+          {kpiItems.map((kpi, i) => (
+            <div key={i} style={{ padding: "14px 18px", borderRight: i < 3 ? `1px solid ${S.border}` : "none" }}>
+              <div style={{ marginBottom: 7 }}>{kpi.icon}</div>
+              <p style={{ fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase" as const, color: S.textMuted, fontWeight: 600, marginBottom: 4 }}>{kpi.label}</p>
+              <p style={{ fontSize: 16, fontWeight: 500, color: dark ? "#fff" : "#111", letterSpacing: "-0.02em", margin: 0 }}>{kpi.value}</p>
+              {"sub" in kpi && kpi.sub && <p style={{ fontSize: 10, color: dark ? "#444" : "#9ca3af", marginTop: 2, lineHeight: 1.4 }}>{kpi.sub}</p>}
             </div>
           ))}
         </div>
 
-        {/* ── Tabs ─────────────────────────────────────────────────────────── */}
-        <div className="flex flex-wrap border-b border-[#e5e7eb] mb-6">
-          {TABS.map(t => {
+        {/* Kontekst + AI */}
+        <div className="ha4">
+          <KontekstRow kontekst={kontekst} city={address.city} voivodeship={address.voivodeship} pkdCode={pkdCode} dark={dark} S={S} isPro={isPro} />
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: "flex", borderBottom: `1px solid ${dark ? "#1a1a1a" : "#e8eaed"}`, marginBottom: 24, overflowX: "auto" }}>
+          {TABS.map((t, idx) => {
             const active = tab === t.key
             return (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={[
-                  "flex shrink-0 items-center gap-2 px-5 py-3.5 text-sm border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap",
-                  active
-                    ? "border-blue-600 font-medium text-blue-600"
-                    : "border-transparent font-normal text-gray-500 hover:text-gray-700",
-                ].join(" ")}
-              >
-                {t.label}
-                <span className={`rounded text-[10px] font-semibold px-1.5 py-px ${t.pro ? "bg-violet-50 text-violet-600" : "bg-green-50 text-green-600"}`}>
-                  {t.pro ? "PRO" : "free"}
+              <button key={t.key} onClick={() => setTab(t.key)} className="tab-btn" style={{
+                display: "flex", flexDirection: "column", alignItems: "flex-start",
+                padding: "12px 20px", cursor: "pointer",
+                background: active ? (dark ? "#0d1929" : "#f0f7ff") : "none",
+                border: "none", borderBottom: active ? "2px solid #2563eb" : "2px solid transparent",
+                borderRight: idx < TABS.length - 1 ? `1px solid ${dark ? "#1a1a1a" : "#e8eaed"}` : "none",
+                color: active ? "#2563eb" : (dark ? "#555" : "#6b7280"),
+                whiteSpace: "nowrap", minWidth: 110, transition: "all 0.15s",
+              }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: active ? 600 : 400, marginBottom: 2 }}>
+                  {t.icon}{t.label}{t.pro ? <ProBadge dark={dark} /> : <FreeBadge dark={dark} />}
                 </span>
+                <span style={{ fontSize: 10, color: active ? "#2563eb99" : (dark ? "#333" : "#bbb") }}>{t.sub}</span>
               </button>
             )
           })}
         </div>
 
-        {/* ══ Tab: Podstawowe ═════════════════════════════════════════════════ */}
         {tab === "podstawowe" && (
-          <div className="flex gap-6 items-start">
-
-            {/* ── Left column ────────────────────────────────────────────── */}
-            <div className="flex-1 min-w-0">
-
+          <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               {/* Dane rejestrowe */}
-              <Card>
-                <CardHeader title="Dane rejestrowe" />
-                <dl>
-                  <Field label="Pełna nazwa"        value={name} />
-                  <Field label="Forma prawna"        value={sentenceCase(legalForm)} />
-                  <Field label="Data rejestracji"    value={fmtDate(registrationDate) || null} />
-                  <Field label="Adres siedziby"      value={fmtAddress(address.full) || null} />
-                  {address.voivodeship && (
-                    <Field label="Województwo"       value={sentenceCase(address.voivodeship)} />
-                  )}
-                  <Field label="Numer KRS"           value={krs || null} />
-                  <Field label="REGON"               value={regon ? formatRegon(regon) : null} />
-                  <Field label="NIP"                 value={nip} />
-                  <Field label="Kapitał zakładowy"   value={capitalFmt} />
-                  {ownerName && (
-                    <Field label="Właściciel"        value={fmtPerson(ownerName)} />
-                  )}
-                </dl>
-              </Card>
+              <div style={S.card}>
+                <div style={S.cardHeader}><span style={S.label}>Dane rejestrowe</span></div>
+                <Field S={S} label="Pełna nazwa" value={displayName} />
+                <Field S={S} label="Forma prawna" value={sc(legalForm)} />
+                <Field S={S} label="Forma własności" value={formaWlasnosciDisplay} />
+                <Field S={S} label={isCEIDG ? "Data rozpoczęcia" : "Data rejestracji"} value={fmtDate(registrationDate) || undefined} />
+                {dataZawieszenia && <Field S={S} label="Data zawieszenia" value={fmtDate(dataZawieszenia)} />}
+                {dataWznowienia && <Field S={S} label="Data wznowienia" value={fmtDate(dataWznowienia)} />}
+                {dataZakonczenia && <Field S={S} label="Data zakończenia" value={fmtDate(dataZakonczenia)} />}
+                <Field S={S} label="Adres siedziby" value={address.full || undefined} />
+                {address.voivodeship && <Field S={S} label="Województwo" value={sc(address.voivodeship)} />}
+                {krs && <Field S={S} label="Numer KRS" value={krs} />}
+                {regon && <Field S={S} label="REGON" value={formatRegon(regon)} />}
+                <Field S={S} label="NIP" value={nip} />
+                {!isCEIDG && capitalFmt && <Field S={S} label="Kapitał zakładowy" value={capitalFmt} />}
+                {ownerName && <Field S={S} label="Właściciel" value={fmtPerson(ownerName)} />}
+                {organRejestrowy && <Field S={S} label="Organ rejestrowy" value={sc(organRejestrowy)} />}
+                {liczbaPracownikow && <Field S={S} label="Liczba pracowników" value={liczbaPracownikow} />}
+                {!isCEIDG && ostatnieSprRok && <Field S={S} label="Ostatnie sprawozdanie" value={String(ostatnieSprRok)} />}
+                {!isCEIDG && celDzialania && <Field S={S} label="Cel działania" value={sc(celDzialania)} />}
+                {flagaRyzyka && <Field S={S} label="Flaga ryzyka"><span style={{ color: "#ef4444", fontWeight: 600 }}>⚠ Wykryto ryzyko</span></Field>}
+                {isCEIDG && uprawieniaInfo && <Field S={S} label="Uprawnienia" value={uprawieniaInfo} />}
+              </div>
 
-              {/* Kontakt — paywall */}
-              {hasContact && (
-                <Card className="relative">
-                  <CardHeader title="Kontakt" />
-                  {/* blurred preview */}
-                  <dl className="blur-[2px] pointer-events-none select-none">
-                    {contact.email   && <Field label="E-mail"     value={maskEmail(contact.email)} />}
-                    {contact.website && <Field label="Strona www"  value={maskWebsite(contact.website)} />}
-                    {contact.phone   && <Field label="Telefon"     value={maskPhone(contact.phone)} />}
-                  </dl>
-                  {/* overlay */}
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-white/60 backdrop-blur-[1px]">
-                    <Lock size={16} className="text-gray-400 mb-2" />
-                    <p className="text-xs font-semibold text-gray-700 mb-1">Dane kontaktowe</p>
-                    <p className="text-xs text-gray-500 mb-3">Dostępne w planie Pro</p>
-                    <button className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors cursor-pointer">
-                      Odblokuj za 49 zł/mies.
-                    </button>
-                  </div>
-                </Card>
-              )}
-
-              {/* Zarząd */}
-              {representatives.length > 0 && (
-                <Card>
-                  <CardHeader title="Zarząd" />
-                  {representatives.map((r, i) => <PersonRow key={i} rep={r} />)}
-                  {representationMethod && (
-                    <div className="px-5 pt-4 pb-5 border-t border-[#e5e7eb]">
-                      <p className="text-xs font-medium uppercase tracking-widest text-gray-400 mb-2">
-                        Sposób reprezentacji
-                      </p>
-                      <p className="rounded-lg bg-gray-50 p-3.5 text-sm leading-relaxed text-gray-700">
-                        {sentenceCase(representationMethod)}
+              {isCEIDG && ownerName && (
+                <div style={S.card}>
+                  <div style={S.cardHeader}><span style={S.label}>Właściciel</span></div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 20px" }}>
+                    <div style={{ position: "relative" }}>
+                      <div style={{ ...S.avatar, width: 44, height: 44, fontSize: 15, background: ownerGender === 'F' ? (dark ? "#2d1030" : "#fdf2f8") : (dark ? "#1a2444" : "#eff6ff"), border: `1px solid ${ownerGender === 'F' ? (dark ? "#7c3aed44" : "#f9a8d4") : (dark ? "#2a3a6a" : "#bfdbfe")}`, color: ownerGender === 'F' ? "#ec4899" : "#2563eb" }}>
+                        {getInitials(ownerName) || "?"}
+                      </div>
+                      {genderIcon && <span style={{ position: "absolute", bottom: -2, right: -4, fontSize: 12, color: genderColor }}>{genderIcon}</span>}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 15, fontWeight: 500, color: S.textValue, margin: 0 }}>{fmtPerson(ownerName)}</p>
+                      <p style={{ fontSize: 11, color: S.textMuted, margin: "2px 0 0", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        {ownerGender === 'F' ? 'Właścicielka' : 'Właściciel'} / JDG
+                        {flag && ownerCitizenship !== 'PL' && <span style={{ marginLeft: 8 }}>{flag} {citizenshipName}</span>}
                       </p>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {hasPrivateSection && (
+                <div style={S.card}>
+                  <div style={S.cardHeader}>
+                    <span style={S.label}>Dane dodatkowe</span>
+                    {!isPro && <span style={{ fontSize: 10, fontWeight: 600, color: "#7c3aed", background: dark ? "#1a1060" : "#ede9fe", padding: "2px 8px", borderRadius: 4, letterSpacing: "0.06em" }}>BASIC+</span>}
+                  </div>
+                  <div style={{ filter: isPro ? "none" : "blur(5px)", pointerEvents: isPro ? "auto" : "none", userSelect: isPro ? "auto" : "none" }}>
+                    {wspolnoscMajatkowa !== null && (
+                      <Field S={S} label="Wspólność majątkowa">
+                        <span style={{ color: wspolnoscMajatkowa ? "#f59e0b" : S.textValue, fontWeight: wspolnoscMajatkowa ? 600 : 400 }}>
+                          {wspolnoscMajatkowa ? "⚠ Tak — ustrój wspólności" : "Nie (rozdzielność)"}
+                        </span>
+                      </Field>
+                    )}
+                    {adresDoreczenia && <Field S={S} label="Adres e-Doręczeń"><span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12 }}>{adresDoreczenia}</span></Field>}
+                  </div>
+                  {!isPro && (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 20px", borderTop: `1px solid ${S.borderLight}`, gap: 4 }}>
+                      <Lock size={13} color={dark ? "#444" : "#d1d5db"} />
+                      <p style={{ fontSize: 12, fontWeight: 500, color: dark ? "#aaa" : "#374151", margin: 0 }}>Dane dodatkowe w planie Basic+</p>
+                      <Link href="/cennik" style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>Odblokuj za 49 zł/mies.</Link>
+                    </div>
                   )}
-                </Card>
+                </div>
               )}
 
-              {/* Prokurenci */}
-              {prokurenci.length > 0 && (
-                <Card>
-                  <CardHeader title="Prokurenci" />
-                  {prokurenci.map((p, i) => <PersonRow key={i} rep={p} />)}
-                </Card>
+              {hasVatSection && (
+                <div style={S.card}>
+                  <div style={S.cardHeader}>
+                    <span style={S.label}>VAT / Biała Lista MF</span>
+                    {!isPro && hasAccounts && <span style={{ fontSize: 10, fontWeight: 600, color: "#7c3aed", background: dark ? "#1a1060" : "#ede9fe", padding: "2px 8px", borderRadius: 4, letterSpacing: "0.06em" }}>BASIC+</span>}
+                  </div>
+                  <Field S={S} label="Status VAT">
+                    <span style={{ color: vat.color, fontWeight: 600 }}>
+                      <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: vat.color, marginRight: 6, verticalAlign: "middle" }} />{vat.label}
+                    </span>
+                  </Field>
+                  {hasAccounts && (
+                    <>
+                      <div style={{ filter: isPro ? "none" : "blur(5px)", pointerEvents: isPro ? "auto" : "none", userSelect: isPro ? "auto" : "none" }}>
+                        {accountNumbers.map((acc, i) => (
+                          <Field key={i} S={S} label={i === 0 ? "Konto bankowe" : `Konto ${i + 1}`}>
+                            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, letterSpacing: "0.04em" }}>{formatIban(acc)}</span>
+                          </Field>
+                        ))}
+                      </div>
+                      {!isPro && (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 20px", borderTop: `1px solid ${S.borderLight}`, gap: 4 }}>
+                          <Lock size={13} color={dark ? "#444" : "#d1d5db"} />
+                          <p style={{ fontSize: 12, fontWeight: 500, color: dark ? "#aaa" : "#374151", margin: 0 }}>Numery kont w planie Basic+</p>
+                          <Link href="/cennik" style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>Odblokuj za 49 zł/mies.</Link>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               )}
 
-              {/* Rada nadzorcza */}
-              {radaNadzorcza.length > 0 && (
-                <Card>
-                  <CardHeader title="Rada nadzorcza" />
-                  {radaNadzorcza.map((r, i) => <PersonRow key={i} rep={r} />)}
-                </Card>
+              {(contact.phone || contact.phoneMobile || contact.email || contact.website || contact.googleRating) && (
+                <div style={{ ...S.card, position: "relative" }}>
+                  <div style={S.cardHeader}>
+                    <span style={S.label}>Kontakt</span>
+                    {!isPro && <span style={{ fontSize: 10, fontWeight: 600, color: "#7c3aed", background: dark ? "#1a1060" : "#ede9fe", padding: "2px 8px", borderRadius: 4, letterSpacing: "0.06em" }}>BASIC+</span>}
+                  </div>
+                  <div style={{ filter: isPro ? "none" : "blur(5px)", pointerEvents: isPro ? "auto" : "none", userSelect: isPro ? "auto" : "none" }}>
+                    {contact.phone && <Field S={S} label="Telefon" value={contact.phone} />}
+                    {contact.phoneMobile && <Field S={S} label="Komórkowy" value={contact.phoneMobile} />}
+                    {contact.email && <Field S={S} label="E-mail" value={contact.email} />}
+                    {contact.website && <Field S={S} label="Strona WWW"><a href={contact.website.startsWith("http") ? contact.website : `https://${contact.website}`} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>{contact.website}</a></Field>}
+                    {contact.googleRating != null && <Field S={S} label="Ocena Google"><span style={{ color: "#f59e0b", fontWeight: 600 }}>★ {contact.googleRating.toFixed(1)}</span></Field>}
+                  </div>
+                  {!isPro && (
+                    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: dark ? "rgba(10,10,10,0.75)" : "rgba(255,255,255,0.75)", backdropFilter: "blur(2px)", borderRadius: 16, zIndex: 10, gap: 6 }}>
+                      <Lock size={16} color={dark ? "#444" : "#d1d5db"} />
+                      <p style={{ fontSize: 12, fontWeight: 500, color: dark ? "#aaa" : "#374151", margin: 0 }}>Dane kontaktowe w planie Basic+</p>
+                      <Link href="/cennik" style={{ fontSize: 12, color: "#2563eb", fontWeight: 600 }}>Odblokuj za 49 zł/mies.</Link>
+                    </div>
+                  )}
+                </div>
               )}
 
-              {/* Wspólnicy */}
-              {shareholders.length > 0 && (
-                <Card>
-                  <CardHeader title="Wspólnicy" />
-
-                  {/* Bar chart */}
-                  <div className="px-5 pt-5 pb-4 border-b border-[#e5e7eb] space-y-4">
+              {!isCEIDG && representatives.length > 0 && (
+                <div style={S.card}>
+                  <div style={S.cardHeader}><span style={S.label}>Zarząd</span><span style={{ fontSize: 11, color: S.textMuted }}>{representatives.length}</span></div>
+                  {representatives.map((r, i) => <PersonRow S={S} key={i} rep={r} />)}
+                  {representationMethod && (
+                    <div style={{ padding: "14px 20px", borderTop: `1px solid ${S.borderLight}` }}>
+                      <p style={{ ...S.label, marginBottom: 6 }}>Sposób reprezentacji</p>
+                      <p style={{ fontSize: 13, color: S.textMuted, lineHeight: 1.6, margin: 0, background: dark ? "#0d0d0d" : "#f9fafb", padding: "10px 14px", borderRadius: 8, border: `1px solid ${S.borderLight}` }}>{sc(representationMethod)}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {!isCEIDG && prokurenci.length > 0 && (
+                <div style={S.card}>
+                  <div style={S.cardHeader}><span style={S.label}>Prokurenci</span></div>
+                  {prokurenci.map((p, i) => <PersonRow S={S} key={i} rep={p} />)}
+                </div>
+              )}
+              {!isCEIDG && radaNadzorcza.length > 0 && (
+                <div style={S.card}>
+                  <div style={S.cardHeader}><span style={S.label}>Rada nadzorcza</span></div>
+                  {radaNadzorcza.map((r, i) => <PersonRow S={S} key={i} rep={r} />)}
+                </div>
+              )}
+              {!isCEIDG && shareholders.length > 0 && (
+                <div style={S.card}>
+                  <div style={S.cardHeader}><span style={S.label}>Wspólnicy</span><span style={{ fontSize: 12, color: S.textMuted }}>{shareholders.length}</span></div>
+                  <div style={{ padding: "16px 20px", borderBottom: `1px solid ${S.borderLight}` }}>
                     {shareholders.map((s, i) => {
-                      const pct = shareTotal > 0
-                        ? (shareVals[i] / shareTotal) * 100
-                        : 100 / shareholders.length
+                      const pct = shareTotal > 0 ? (shareVals[i] / shareTotal) * 100 : 100 / shareholders.length
                       const isTop = shareVals[i] !== 0 && shareVals[i] === maxShare
                       return (
-                        <div key={i}>
-                          <div className="flex justify-between text-xs mb-1.5">
-                            <span className="text-gray-700 truncate max-w-[75%]">{fmtPerson(s.name)}</span>
-                            <span className="text-gray-400 shrink-0 ml-2">
-                              {shareVals[i] > 0 ? `${shareVals[i]}%` : `${Math.round(pct)}%`}
-                            </span>
+                        <div key={i} style={{ marginBottom: i < shareholders.length - 1 ? 14 : 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 13 }}>
+                            <span style={{ color: dark ? "#aaa" : "#374151" }}>{fmtPerson(s.name)}</span>
+                            <span style={{ color: S.textMuted, fontFamily: "'DM Mono', monospace" }}>{shareVals[i] > 0 ? `${shareVals[i]}%` : `${Math.round(pct)}%`}</span>
                           </div>
-                          <div className="h-1.5 rounded-full bg-gray-100">
-                            <div
-                              className={`h-1.5 rounded-full ${isTop ? "bg-gray-800" : "bg-gray-300"}`}
-                              style={{ width: `${pct}%` }}
-                            />
+                          <div style={{ height: 3, borderRadius: 2, background: dark ? "#1e1e1e" : "#f3f4f6" }}>
+                            <div style={{ height: 3, borderRadius: 2, width: `${pct}%`, background: isTop ? "#2563eb" : "#d1d5db", transition: "width 0.8s ease" }} />
                           </div>
                         </div>
                       )
                     })}
                   </div>
-
-                  {/* List */}
                   {shareholders.map((s, i) => (
-                    <div key={i} className="flex items-center gap-3 px-5 py-3.5 border-b border-[#e5e7eb] last:border-0">
-                      <Avatar name={s.name} />
-                      <p className="flex-1 text-sm text-gray-900 min-w-0 truncate">{fmtPerson(s.name)}</p>
-                      {s.shares && (
-                        <span className="text-xs text-gray-400 shrink-0">{sentenceCase(s.shares)}</span>
-                      )}
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", borderBottom: `1px solid ${S.borderLight}` }}>
+                      <div style={S.avatar}>{getInitials(s.name) || "?"}</div>
+                      <p style={{ flex: 1, fontSize: 13, color: S.textValue, margin: 0 }}>{fmtPerson(s.name)}</p>
+                      {s.shares && <span style={{ fontSize: 11, color: S.textMuted, fontFamily: "'DM Mono', monospace" }}>{fmtShares(s.shares)}</span>}
                     </div>
                   ))}
-                </Card>
+                </div>
               )}
-
-              {/* Sposób reprezentacji — standalone (gdy brak zarządu) */}
-              {representationMethod && representatives.length === 0 && (
-                <Card>
-                  <CardHeader title="Sposób reprezentacji" />
-                  <div className="px-5 py-5">
-                    <p className="rounded-lg bg-gray-50 p-3.5 text-sm leading-relaxed text-gray-700">
-                      {sentenceCase(representationMethod)}
-                    </p>
-                  </div>
-                </Card>
-              )}
-
-              {/* PKD */}
               {pkdCodes.length > 0 && (
-                <Card>
-                  <CardHeader title="Przedmiot działalności (PKD)" />
+                <div style={S.card}>
+                  <div style={S.cardHeader}><span style={S.label}>Przedmiot działalności (PKD)</span><span style={{ fontSize: 12, color: S.textMuted }}>{pkdCodes.length} kodów</span></div>
                   {pkdCodes.map((p, i) => (
-                    <div key={i} className="flex items-start gap-3 px-5 py-3.5 border-b border-[#e5e7eb] last:border-0">
-                      {/* kod PKD — font-mono text-xs text-gray-500 per brief */}
-                      <span className={`font-mono text-xs text-gray-500 shrink-0 w-14 pt-0.5 ${p.isPrimary ? "font-bold" : ""}`}>
-                        {p.code}
-                      </span>
-                      <p className="flex-1 text-xs text-gray-600 leading-relaxed min-w-0">
-                        {sentenceCase(p.description)}
-                      </p>
-                      {p.isPrimary && (
-                        <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
-                          przeważająca
-                        </span>
-                      )}
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "11px 20px", borderBottom: `1px solid ${S.borderLight}` }}>
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: p.isPrimary ? "#2563eb" : S.textMuted, flexShrink: 0, width: 52, paddingTop: 1, fontWeight: p.isPrimary ? 600 : 400 }}>{p.code}</span>
+                      <p style={{ flex: 1, fontSize: 13, color: p.isPrimary ? S.textValue : S.textMuted, lineHeight: 1.5, margin: 0 }}>{sc(p.description)}</p>
+                      {p.isPrimary && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.06em", color: "#2563eb", background: dark ? "#0f1f44" : "#eff6ff", padding: "2px 6px", borderRadius: 4, flexShrink: 0, textTransform: "uppercase" }}>główna</span>}
                     </div>
                   ))}
-                </Card>
+                </div>
               )}
+            </div>
 
-            </div>{/* /left column */}
-
-            {/* ── Sticky sidebar (w-72) ───────────────────────────────────── */}
-            <aside className="w-72 shrink-0 sticky top-4 space-y-4 self-start">
-
+            {/* ── Sidebar ── */}
+            <aside style={{ width: 260, flexShrink: 0, position: "sticky", top: 72, alignSelf: "flex-start" }}>
               {/* Mapa */}
-              <div className="rounded-xl border border-[#e5e7eb] bg-white overflow-hidden">
-                <div className="relative" style={{ aspectRatio: "4/3" }}>
-                  <iframe
-                    src={`https://maps.google.com/maps?q=${mapQ}&output=embed&z=14`}
-                    className="w-full h-full border-0 block"
-                    title="Lokalizacja firmy"
-                    loading="lazy"
-                  />
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${mapQ}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-white/90 px-2 py-1 text-[11px] text-gray-600 hover:bg-white transition-colors"
-                  >
-                    <ExternalLink size={10} />
-                    Otwórz mapę
+              <div style={{ ...S.card, overflow: "hidden" }}>
+                <div style={{ position: "relative", aspectRatio: "4/3" }}>
+                  <iframe src={`https://maps.google.com/maps?q=${mapQ}&output=embed&z=14`} style={{ width: "100%", height: "100%", border: 0, display: "block" }} title="Lokalizacja" loading="lazy" />
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${mapQ}`} target="_blank" rel="noopener noreferrer" style={{ position: "absolute", bottom: 8, right: 8, display: "flex", alignItems: "center", gap: 4, background: "rgba(255,255,255,0.9)", padding: "3px 8px", borderRadius: 5, fontSize: 11, color: "#374151" }}>
+                    <ExternalLink size={9} /> Otwórz
                   </a>
                 </div>
-                {(address.full || address.street) && (
-                  <div className="px-4 py-3 border-t border-[#e5e7eb]">
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      {fmtAddress(address.full) || `${address.street}, ${address.postalCode} ${address.city}`}
-                    </p>
-                  </div>
-                )}
+                {address.full && <div style={{ padding: "10px 14px", borderTop: `1px solid ${S.border}` }}><p style={{ fontSize: 11, color: S.textMuted, lineHeight: 1.5, margin: 0 }}>{address.full}</p></div>}
               </div>
 
-              {/* Akcje */}
-              <SideCard title="Akcje">
-                <div className="space-y-2">
-                  <Btn variant="outline" className="w-full justify-start">
-                    <Printer size={14} className="text-gray-400" /> Drukuj / PDF
-                  </Btn>
-                  <Btn variant="outline" className="w-full justify-start">
-                    <Share2 size={14} className="text-gray-400" /> Udostępnij
-                  </Btn>
-                  <Btn variant="solid" className="w-full justify-center">
-                    Obserwuj
-                  </Btn>
-                  <Btn variant="outline" className="w-full justify-start">
-                    <Flag size={14} className="text-gray-400" /> Zgłoś błąd
-                  </Btn>
-                  {krsLink && (
-                    <Btn href={krsLink} variant="outline" className="w-full justify-start">
-                      <ExternalLink size={14} className="text-gray-400" /> Wpis w {source}
-                    </Btn>
-                  )}
-                </div>
-              </SideCard>
+              {/* Akcje — wszystkie w jednej sekcji */}
+              <div style={S.card}>
+                <div style={S.cardHeader}><span style={S.label}>Akcje</span></div>
+                <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 7 }}>
 
-              {/* Sprawozdania finansowe — paywall */}
-              <div className="relative rounded-xl border border-[#e5e7eb] bg-white overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#e5e7eb]">
-                  <h3 className="text-xs font-medium uppercase tracking-widest text-gray-400">
-                    Sprawozdania finansowe
-                  </h3>
-                </div>
-                {/* blurred rows */}
-                <div className="blur-[4px] pointer-events-none select-none">
-                  {(financialReports.length > 0
-                    ? financialReports.slice(0, 3)
-                    : [{ rok: "2024" }, { rok: "2023" }, { rok: "2022" }]
-                  ).map((r: any, i: number) => (
-                    <div key={i} className="flex items-center gap-2.5 px-5 py-3 border-b border-[#e5e7eb] last:border-0">
-                      <FileText size={14} className="text-gray-400 shrink-0" />
-                      <span className="flex-1 text-sm text-gray-900">
-                        Rok {r.rok || r.dataZlozenia || r.rokObrotowy || 2024 - i}
-                      </span>
-                      <Download size={13} className="text-gray-400 shrink-0" />
-                    </div>
-                  ))}
-                </div>
-                {/* overlay */}
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[3px]">
-                  <Lock size={18} className="text-gray-300 mb-2" />
-                  <p className="text-xs text-gray-400 mb-3">Dostępne w planie Pro</p>
-                  <button className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 transition-colors cursor-pointer">
-                    Odblokuj za 49 zł/mies.
+                  {/* Obserwuj — toggle, wyróżniony */}
+                  <button
+                    onClick={handleMonitor}
+                    disabled={monitorLoading}
+                    style={{
+                      ...S.btnPrimary,
+                      width: "100%",
+                      justifyContent: "center",
+                      background: isMonitored ? (dark ? "#0d2218" : "#f0fdf4") : "#2563eb",
+                      color: isMonitored ? "#16a34a" : "#fff",
+                      border: isMonitored ? "1px solid #bbf7d0" : "none",
+                      opacity: monitorLoading ? 0.7 : 1,
+                    }}>
+                    {monitorLoading
+                      ? <span style={{ fontSize: 12 }}>...</span>
+                      : isMonitored
+                        ? <><BellOff size={13} /> Obserwowane ✓</>
+                        : <><Bell size={13} /> Obserwuj</>
+                    }
                   </button>
+
+                  {/* Eksportuj */}
+                  <button style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12 }}>
+                    <Download size={12} /> Eksportuj dane
+                  </button>
+
+                  {/* Pozostałe akcje */}
+                  {[
+                    { icon: <Printer size={12} />, label: "Drukuj / PDF" },
+                    { icon: <Share2 size={12} />, label: "Udostępnij" },
+                    { icon: <Flag size={12} />, label: "Zgłoś błąd" },
+                    ...(krsLink ? [{ icon: <ExternalLink size={12} />, label: `Wpis w ${source}`, href: krsLink }] : []),
+                  ].map((a, i) => (
+                    "href" in a
+                      ? <a key={i} href={a.href} target="_blank" rel="noopener noreferrer" style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12, textDecoration: "none" }}>{a.icon} {a.label}</a>
+                      : <button key={i} style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12 }}>{a.icon} {a.label}</button>
+                  ))}
                 </div>
               </div>
 
               {/* Pro CTA */}
-              <div className="rounded-xl bg-blue-600 p-5 text-white">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-blue-200">
-                  Plan Pro
-                </p>
-                <p className="mb-4 text-sm font-medium leading-snug">
-                  Finanse, ryzyko, powiązania i dotacje UE w jednym miejscu
-                </p>
-                <button className="w-full cursor-pointer rounded-lg bg-white py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-100 transition-colors">
-                  Odblokuj za 49 zł/mies.
-                </button>
+              <div style={{ background: dark ? "linear-gradient(135deg, #0f1f44 0%, #0a0a2a 100%)" : "#eff6ff", border: `1px solid ${dark ? "#1a3a7a" : "#bfdbfe"}`, borderRadius: 14, padding: 16 }}>
+                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "#2563eb", textTransform: "uppercase", marginBottom: 5 }}>Plan Pro</p>
+                <p style={{ fontSize: 12, fontWeight: 400, color: dark ? "#ccc" : "#374151", lineHeight: 1.5, marginBottom: 14 }}>Finanse, ryzyko, sygnały i dotacje — pełny obraz firmy</p>
+                <Link href="/cennik" style={{ ...S.btnPrimary, width: "100%", justifyContent: "center", textDecoration: "none", fontSize: 12 }}>Odblokuj za 119 zł/mies.</Link>
               </div>
-
-              {/* Ad slot */}
-              <div className="ad-slot min-h-[250px] rounded-xl border border-dashed border-[#e5e7eb] flex items-center justify-center">
-                <p className="text-xs text-gray-300 select-none">Reklama</p>
-              </div>
-
-            </aside>{/* /sidebar */}
-          </div>
-        )}{/* /tab podstawowe */}
-
-        {/* ══ Pro tabs — paywall overlay ══════════════════════════════════════ */}
-        {tab !== "podstawowe" && (
-          <div className="relative min-h-[360px] overflow-hidden rounded-xl border border-[#e5e7eb] bg-white">
-            {/* skeleton behind blur */}
-            <div className="space-y-3 p-8 blur-sm pointer-events-none select-none">
-              {[68, 82, 55, 74, 44].map((w, i) => (
-                <div key={i} className="rounded bg-gray-100" style={{ height: i === 0 ? 22 : 14, width: `${w}%` }} />
-              ))}
-            </div>
-            {/* overlay */}
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/85 backdrop-blur-[3px]">
-              <Lock size={26} className="text-gray-300 mb-3" />
-              <p className="text-[17px] font-semibold tracking-tight text-gray-900 mb-1">
-                Dostępne w planie Pro
-              </p>
-              <p className="text-sm text-gray-400 mb-6">{PRO_DESC[tab]}</p>
-              <button className="cursor-pointer rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
-                Odblokuj za 49 zł/mies.
-              </button>
-            </div>
+            </aside>
           </div>
         )}
 
-      </div>{/* /page body */}
+        {tab === "finanse" && <ProPaywall dark={dark} S={S} desc={PRO_DESC.finanse!} />}
+        {tab === "ryzyko" && <ProPaywall dark={dark} S={S} desc={PRO_DESC.ryzyko!} />}
+        {tab === "sygnaly" && <ProPaywall dark={dark} S={S} desc={PRO_DESC.sygnaly!} />}
+        {tab === "dotacje" && <ProPaywall dark={dark} S={S} desc={PRO_DESC.dotacje!} />}
+      </div>
 
-      {/* ══ Footer ══════════════════════════════════════════════════════════════ */}
-      <footer className="border-t border-[#e5e7eb] py-6">
-        <p className="mx-auto max-w-[1100px] px-6 text-center text-[11px] text-gray-300">
-          Dane z{" "}
-          {source === "KRS"
-            ? "Krajowego Rejestru Sądowego"
-            : "Centralnej Ewidencji i Informacji o Działalności Gospodarczej"}
-          . Informacje mają charakter poglądowy.
+      <footer style={{ borderTop: `1px solid ${dark ? "#111" : "#e8eaed"}`, padding: "20px 24px", textAlign: "center" }}>
+        <p style={{ fontSize: 11, color: S.textMuted, margin: 0 }}>
+          Dane z {source === "KRS" ? "Krajowego Rejestru Sądowego" : "Centralnej Ewidencji i Informacji o Działalności Gospodarczej"}. Informacje mają charakter poglądowy.
         </p>
       </footer>
-
     </div>
   )
 }
