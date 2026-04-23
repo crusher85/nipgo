@@ -8,75 +8,6 @@ import { Check, X, Zap, Shield, Download, Brain, ChevronDown, Sparkles } from "l
 
 type Period = "monthly" | "yearly"
 
-const PLANS = [
-  {
-    id: "free",
-    name: "Free",
-    price: { monthly: 0, yearly: 0 },
-    priceMonthlyFromYearly: null,
-    desc: "Do przeglądania i weryfikacji",
-    color: "#6b7280",
-    popular: false,
-    cta: "Zacznij za darmo",
-    ctaHref: "/rejestracja",
-    trial: null,
-    features: [
-      { label: "10 wyników wyszukiwania", ok: true },
-      { label: "Karta firmy (dane rejestrowe)", ok: true },
-      { label: "Status VAT", ok: true },
-      { label: "Filtry: miasto, woj., forma prawna, PKD", ok: true },
-      { label: "Dane kontaktowe", ok: false },
-      { label: "Eksport CSV", ok: false },
-      { label: "AI wyszukiwanie", ok: false },
-      { label: "Monitoring firm", ok: false },
-    ],
-  },
-  {
-    id: "basic",
-    name: "Basic",
-    price: { monthly: 59, yearly: 629 },
-    priceMonthlyFromYearly: 52,
-    desc: "Dla handlowców i małych zespołów",
-    color: "#2563eb",
-    popular: true,
-    cta: "Zacznij Basic",
-    ctaHref: "/rejestracja?plan=basic",
-    trial: "🎁 Pierwsze 7 dni na poziomie Pro — w cenie Basic",
-    features: [
-      { label: "Wszystkie wyniki wyszukiwania", ok: true },
-      { label: "Dane kontaktowe (telefon, email, WWW)", ok: true },
-      { label: "Eksport CSV — 1 000 rekordów/mies", ok: true },
-      { label: "AI wyszukiwanie — 30 zapytań/dzień", ok: true },
-      { label: "Monitoring — 20 firm", ok: true },
-      { label: "Filtry premium (kontakty, kapitał, VAT)", ok: true },
-      { label: "Weryfikacja kontrahenta (podstawowa)", ok: true },
-      { label: "Historia zmian firmy", ok: false },
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: { monthly: 119, yearly: 1259 },
-    priceMonthlyFromYearly: 105,
-    desc: "Dla działów sprzedaży i agencji",
-    color: "#7c3aed",
-    popular: false,
-    cta: "Zacznij Pro",
-    ctaHref: "/rejestracja?plan=pro",
-    trial: null,
-    features: [
-      { label: "Wszystko z Basic", ok: true },
-      { label: "Eksport CSV — 5 000 rekordów/mies", ok: true },
-      { label: "AI wyszukiwanie — 100 zapytań/dzień", ok: true },
-      { label: "Monitoring — 100 firm", ok: true },
-      { label: "Historia zmian firmy", ok: true },
-      { label: "Taby Finanse, Ryzyko, Aktywność, Dotacje", ok: true },
-      { label: "Pełna weryfikacja kontrahenta", ok: true },
-      { label: "Wsparcie priorytetowe", ok: true },
-    ],
-  },
-]
-
 const EXPORT_PACKAGES = [
   { records: "500 rekordów",    price: 19 },
   { records: "2 000 rekordów",  price: 59 },
@@ -87,33 +18,6 @@ const AI_PACKAGES = [
   { queries: "100 zapytań",   price: 19 },
   { queries: "500 zapytań",   price: 69 },
   { queries: "2 000 zapytań", price: 199 },
-]
-
-const FAQ = [
-  {
-    q: "Czy mogę anulować w dowolnym momencie?",
-    a: "Tak. Anulacja jest natychmiastowa — dostęp masz do końca opłaconego okresu. Bez ukrytych opłat i bez wymaganych powodów.",
-  },
-  {
-    q: "Na czym polega bonus 7 dni Pro dla Basic?",
-    a: "Każdy nowy użytkownik który wykupi plan Basic, przez pierwsze 7 dni korzysta z funkcji Pro — widzi historię zmian firm, wszystkie taby analityczne i pełną weryfikację kontrahenta. Po 7 dniach automatycznie przechodzi na standardowy Basic. Żadnych dodatkowych opłat.",
-  },
-  {
-    q: "Jak działają płatności?",
-    a: "Płatności są rekurencyjne — pobierane automatycznie co miesiąc lub rok z podanej karty. Obsługujemy karty Visa, Mastercard oraz płatności przez Przelewy24.",
-  },
-  {
-    q: "Co się stanie gdy przekroczę limit eksportów?",
-    a: "Możesz dokupić jednorazowy pakiet eksportów bez zmiany planu. Limit odnawia się pierwszego dnia każdego miesiąca.",
-  },
-  {
-    q: "Czy dostanę fakturę VAT?",
-    a: "Tak — faktura KSeF wystawiana jest automatycznie po każdej płatności na podane dane firmowe.",
-  },
-  {
-    q: "Skąd pochodzą dane?",
-    a: "Z rejestrów publicznych: KRS (Ministerstwo Sprawiedliwości), CEIDG (Ministerstwo Rozwoju), GUS BIR, Biała Lista VAT MF. Dane kontaktowe z własnych scraperów stron WWW firm — aktualizowane na bieżąco.",
-  },
 ]
 
 function FaqItem({ q, a, dark }: { q: string; a: string; dark: boolean }) {
@@ -145,6 +49,94 @@ export default function CennikPage() {
   const borderColor = dark ? "#1e1e1e" : "#e8eaed"
   const bg = dark ? "#0a0a0a" : "#f8f9fb"
 
+  const PLANS = [
+    {
+      id: "free",
+      name: t("pricing.planFree"),
+      price: { monthly: 0, yearly: 0 },
+      priceMonthlyFromYearly: null,
+      desc: t("pricing.planFreeDesc"),
+      color: "#6b7280",
+      popular: false,
+      cta: t("pricing.ctaFree"),
+      ctaHref: "/rejestracja",
+      trial: null,
+      features: [
+        { label: t("pricing.featureFreeResults"), ok: true },
+        { label: t("pricing.featureRegistry"), ok: true },
+        { label: t("pricing.featureVat"), ok: true },
+        { label: "Filtry: miasto, woj., forma prawna, PKD", ok: true },
+        { label: t("pricing.featureContact"), ok: false },
+        { label: "Eksport CSV", ok: false },
+        { label: t("pricing.featureAi"), ok: false },
+        { label: "Monitoring firm", ok: false },
+      ],
+    },
+    {
+      id: "basic",
+      name: t("pricing.planBasic"),
+      price: { monthly: 59, yearly: 629 },
+      priceMonthlyFromYearly: 52,
+      desc: t("pricing.planBasicDesc"),
+      color: "#2563eb",
+      popular: true,
+      cta: t("pricing.ctaBasic"),
+      ctaHref: "/rejestracja?plan=basic",
+      trial: "🎁 Pierwsze 7 dni na poziomie Pro — w cenie Basic",
+      features: [
+        { label: "Wszystkie wyniki wyszukiwania", ok: true },
+        { label: t("pricing.featureContact"), ok: true },
+        { label: `Eksport CSV — 1 000 ${t("pricing.featureExports")}`, ok: true },
+        { label: `${t("pricing.featureAi")} — 30 ${t("pricing.featureAi")}`, ok: true },
+        { label: `Monitoring — 20 ${t("pricing.featureMonitoring")}`, ok: true },
+        { label: "Filtry premium (kontakty, kapitał, VAT)", ok: true },
+        { label: "Weryfikacja kontrahenta (podstawowa)", ok: true },
+        { label: t("pricing.featureHistory"), ok: false },
+      ],
+    },
+    {
+      id: "pro",
+      name: t("pricing.planPro"),
+      price: { monthly: 119, yearly: 1259 },
+      priceMonthlyFromYearly: 105,
+      desc: t("pricing.planProDesc"),
+      color: "#7c3aed",
+      popular: false,
+      cta: t("pricing.ctaPro"),
+      ctaHref: "/rejestracja?plan=pro",
+      trial: null,
+      features: [
+        { label: t("pricing.featureAll"), ok: true },
+        { label: `Eksport CSV — 5 000 ${t("pricing.featureExports")}`, ok: true },
+        { label: `${t("pricing.featureAi")} — 100 zapytań/dzień`, ok: true },
+        { label: `Monitoring — 100 ${t("pricing.featureMonitoring")}`, ok: true },
+        { label: t("pricing.featureHistory"), ok: true },
+        { label: t("pricing.featureTabs"), ok: true },
+        { label: "Pełna weryfikacja kontrahenta", ok: true },
+        { label: t("pricing.featureSupport"), ok: true },
+      ],
+    },
+  ]
+
+  const FAQ = [
+    {
+      q: t("pricing.faq.0.q"),
+      a: t("pricing.faq.0.a"),
+    },
+    {
+      q: t("pricing.faq.1.q"),
+      a: t("pricing.faq.1.a"),
+    },
+    {
+      q: t("pricing.faq.2.q"),
+      a: t("pricing.faq.2.a"),
+    },
+    {
+      q: t("pricing.faq.3.q"),
+      a: t("pricing.faq.3.a"),
+    },
+  ]
+
   return (
     <div style={{ minHeight: "100vh", background: bg, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{`
@@ -161,10 +153,11 @@ export default function CennikPage() {
             <Zap size={11} /> CENY EARLY ADOPTER
           </div>
           <h1 style={{ fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 700, letterSpacing: "-0.04em", color: textColor, margin: "0 0 16px", lineHeight: 1.1 }}>
-            Prosty cennik.<br />Bez niespodzianek.
+            {t("pricing.title")}<br />
+            <span style={{ color: mutedColor, fontWeight: 400 }}>{t("pricing.subtitle")}</span>
           </h1>
           <p style={{ fontSize: 16, color: mutedColor, maxWidth: 440, margin: "0 auto 32px", lineHeight: 1.65 }}>
-            Subskrypcja miesięczna lub roczna. Anuluj w dowolnym momencie.
+            {t("pricing.toggleMonthly")} / {t("pricing.toggleYearly")}. {t("pricing.faq.0.a").slice(0, 50)}...
           </p>
 
           {/* Toggle */}
@@ -172,7 +165,7 @@ export default function CennikPage() {
             {(["monthly", "yearly"] as Period[]).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
                 style={{ padding: "8px 20px", fontSize: 13, fontWeight: 500, borderRadius: 8, border: "none", cursor: "pointer", transition: "all 0.15s", background: period === p ? (dark ? "#222" : "#fff") : "transparent", color: period === p ? textColor : mutedColor, boxShadow: period === p ? "0 1px 4px rgba(0,0,0,0.1)" : "none" }}>
-                {p === "monthly" ? t("pricing.toggleMonthly") : <span>Rocznie <span style={{ fontSize: 11, fontWeight: 700, color: "#22c55e", marginLeft: 4 }}>-12%</span></span>}
+                {p === "monthly" ? t("pricing.toggleMonthly") : <span>{t("pricing.toggleYearly")} <span style={{ fontSize: 11, fontWeight: 700, color: "#22c55e", marginLeft: 4 }}>-12%</span></span>}
               </button>
             ))}
           </div>
@@ -191,7 +184,7 @@ export default function CennikPage() {
 
                 {plan.popular && (
                   <div style={{ position: "absolute", top: -13, left: "50%", transform: "translateX(-50%)", background: plan.color, color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", padding: "4px 14px", borderRadius: 100, whiteSpace: "nowrap" }}>
-                    NAJPOPULARNIEJSZY
+                    {t("pricing.mostPopular").toUpperCase()}
                   </div>
                 )}
 
@@ -200,12 +193,12 @@ export default function CennikPage() {
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
                     {price === 0
                       ? <span style={{ fontSize: 36, fontWeight: 700, letterSpacing: "-0.04em", color: textColor }}>0 zł</span>
-                      : <><span style={{ fontSize: 36, fontWeight: 700, letterSpacing: "-0.04em", color: textColor }}>{price} zł</span><span style={{ fontSize: 13, color: mutedColor }}>{period === "yearly" ? "/rok" : "/mies"}</span></>
+                      : <><span style={{ fontSize: 36, fontWeight: 700, letterSpacing: "-0.04em", color: textColor }}>{price} zł</span><span style={{ fontSize: 13, color: mutedColor }}>{period === "yearly" ? t("pricing.perYear") : t("pricing.perMonth")}</span></>
                     }
                   </div>
                   {monthlyEquiv && savings > 0 && (
                     <p style={{ fontSize: 12, color: "#22c55e", fontWeight: 500, margin: "0 0 6px" }}>
-                      ~{plan.priceMonthlyFromYearly} zł/mies — oszczędzasz {savings} zł/rok
+                      ~{plan.priceMonthlyFromYearly} zł{t("pricing.perMonth")} — {t("pricing.yearlySave")}: {savings} zł
                     </p>
                   )}
                   <p style={{ fontSize: 13, color: mutedColor, margin: 0 }}>{plan.desc}</p>
@@ -244,7 +237,7 @@ export default function CennikPage() {
         <div style={{ background: dark ? "#0f1a0f" : "#f0fdf4", border: `1px solid ${dark ? "#1a3a1a" : "#bbf7d0"}`, borderRadius: 14, padding: "18px 24px", marginBottom: 64, display: "flex", gap: 14, alignItems: "flex-start" }}>
           <Sparkles size={16} color="#16a34a" style={{ flexShrink: 0, marginTop: 2 }} />
           <p style={{ fontSize: 13, color: dark ? "#86efac" : "#166534", margin: 0, lineHeight: 1.6 }}>
-            <strong>Bonus dla nowych użytkowników Basic:</strong> przez pierwsze 7 dni od rejestracji masz pełny dostęp do funkcji Pro — historia zmian firmy, wszystkie taby analityczne, pełna weryfikacja kontrahenta. Po 7 dniach automatycznie przechodzisz na standardowy Basic. Żadnych dodatkowych opłat.
+            <strong>{t("pricing.ctaTrial")}:</strong> {t("pricing.faq.1.a")}
           </p>
         </div>
 
@@ -291,38 +284,37 @@ export default function CennikPage() {
             </div>
             <div>
               <p style={{ fontSize: 15, fontWeight: 600, color: textColor, margin: 0 }}>Enterprise</p>
-              <p style={{ fontSize: 13, color: mutedColor, margin: "2px 0 0" }}>Nieograniczone eksporty, API access, SLA, dedykowane wsparcie, faktura na firmę</p>
+              <p style={{ fontSize: 13, color: mutedColor, margin: "2px 0 0" }}>{t("pricing.enterpriseDesc")}</p>
             </div>
           </div>
           <a href="mailto:hello@nipgo.pl" style={{ fontSize: 13, fontWeight: 600, color: textColor, border: `1.5px solid ${borderColor}`, borderRadius: 10, padding: "10px 20px", textDecoration: "none", whiteSpace: "nowrap" }}>
-            Skontaktuj się →
+            {t("pricing.enterpriseCta")} →
           </a>
         </div>
 
         {/* Comparison */}
         <div style={{ marginBottom: 64 }}>
           <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <h2 style={{ fontSize: "clamp(20px, 3vw, 28px)", fontWeight: 700, letterSpacing: "-0.03em", color: textColor, margin: 0 }}>Dlaczego nipgo?</h2>
-            <p style={{ fontSize: 14, color: mutedColor, marginTop: 8 }}>Porównanie z konkurencją</p>
+            <h2 style={{ fontSize: "clamp(20px, 3vw, 28px)", fontWeight: 700, letterSpacing: "-0.03em", color: textColor, margin: 0 }}>{t("pricing.compareTitle")}</h2>
           </div>
           <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: 16, overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: dark ? "#0f0f0f" : "#f9fafb" }}>
-                  {["Funkcja", "nipgo Basic\n59 zł/mies", "Prześwietl\n57 zł/mies", "Apollo\n~200 zł/mies", "MGBI\njednorazowo"].map((h, i) => (
+                  {[t("pricing.compareFeature"), "nipgo Basic\n59 zł/mies", "Prześwietl\n57 zł/mies", "Apollo\n~200 zł/mies", "MGBI\njednorazowo"].map((h, i) => (
                     <th key={i} style={{ padding: "14px 20px", textAlign: i === 0 ? "left" : "center", fontSize: 13, fontWeight: 700, color: i === 1 ? "#2563eb" : mutedColor, borderBottom: `1px solid ${borderColor}`, whiteSpace: "pre-line", lineHeight: 1.5 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {[
-                  ["KRS + CEIDG",          "✓", "✓", "✗", "✓"],
-                  ["Dane kontaktowe",       "✓", "✓", "✓", "częściowo"],
-                  ["Eksport list CSV",      "✓", "✗", "✓", "✓"],
-                  ["AI wyszukiwanie",       "✓", "✗", "częściowo", "✗"],
-                  ["Transparentne ceny",    "✓", "częściowo", "✓", "✗"],
-                  ["Monitoring alertów",    "✓", "✓", "częściowo", "✗"],
-                  ["Nowoczesny interfejs",  "✓", "✗", "✓", "✗"],
+                  ["KRS + CEIDG",         "✓", "✓", "✗", "✓"],
+                  [t("pricing.featureContact"), "✓", "✓", "✓", "częściowo"],
+                  ["Eksport list CSV",    "✓", "✗", "✓", "✓"],
+                  [t("pricing.featureAi"), "✓", "✗", "częściowo", "✗"],
+                  ["Transparentne ceny",  "✓", "częściowo", "✓", "✗"],
+                  ["Monitoring alertów",  "✓", "✓", "częściowo", "✗"],
+                  ["Nowoczesny interfejs","✓", "✗", "✓", "✗"],
                 ].map((row, i) => (
                   <tr key={i} style={{ borderBottom: i < 6 ? `1px solid ${borderColor}` : "none" }}>
                     {row.map((cell, j) => (
@@ -340,7 +332,7 @@ export default function CennikPage() {
         {/* FAQ */}
         <div style={{ maxWidth: 680, margin: "0 auto 64px" }}>
           <h2 style={{ fontSize: "clamp(20px, 3vw, 28px)", fontWeight: 700, letterSpacing: "-0.03em", color: textColor, marginBottom: 32, textAlign: "center" }}>
-            Pytania i odpowiedzi
+            {t("pricing.faqTitle")}
           </h2>
           {FAQ.map((item, i) => <FaqItem key={i} q={item.q} a={item.a} dark={dark} />)}
         </div>
@@ -348,17 +340,17 @@ export default function CennikPage() {
         {/* Bottom CTA */}
         <div style={{ textAlign: "center", padding: "48px 32px", background: cardBg, border: `1px solid ${borderColor}`, borderRadius: 20 }}>
           <h2 style={{ fontSize: "clamp(22px, 3vw, 32px)", fontWeight: 700, letterSpacing: "-0.03em", color: textColor, marginBottom: 12 }}>
-            Zacznij już dziś
+            {t("home.ctaBtn")}
           </h2>
           <p style={{ fontSize: 15, color: mutedColor, marginBottom: 28, lineHeight: 1.65 }}>
-            Plan Free bez karty. Basic i Pro — płatność kartą, odnawia się automatycznie.<br />Anuluj w dowolnym momencie.
+            {t("home.ctaNote")}
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <Link href="/rejestracja?plan=basic" style={{ fontSize: 14, fontWeight: 600, padding: "12px 28px", background: "#2563eb", color: "#fff", borderRadius: 12, textDecoration: "none" }}>
-              Zacznij Basic — 59 zł/mies
+              {t("pricing.ctaBasic")} — 59 zł{t("pricing.perMonth")}
             </Link>
             <Link href="/rejestracja" style={{ fontSize: 14, fontWeight: 500, padding: "12px 28px", background: "transparent", color: textColor, border: `1px solid ${borderColor}`, borderRadius: 12, textDecoration: "none" }}>
-              Zacznij za darmo (Free)
+              {t("pricing.ctaFree")}
             </Link>
           </div>
         </div>
