@@ -8,18 +8,6 @@ import { Check, X, Zap, Shield, Download, Brain, ChevronDown, Sparkles } from "l
 
 type Period = "monthly" | "yearly"
 
-const EXPORT_PACKAGES = [
-  { records: "500 rekordów",    price: 19 },
-  { records: "2 000 rekordów",  price: 59 },
-  { records: "10 000 rekordów", price: 199 },
-]
-
-const AI_PACKAGES = [
-  { queries: "100 zapytań",   price: 19 },
-  { queries: "500 zapytań",   price: 69 },
-  { queries: "2 000 zapytań", price: 199 },
-]
-
 function FaqItem({ q, a, dark }: { q: string; a: string; dark: boolean }) {
   const [open, setOpen] = useState(false)
   const border = dark ? "#1e1e1e" : "#e8eaed"
@@ -49,6 +37,20 @@ export default function CennikPage() {
   const borderColor = dark ? "#1e1e1e" : "#e8eaed"
   const bg = dark ? "#0a0a0a" : "#f8f9fb"
 
+  const EXPORT_PACKAGES = [
+    { records: t("lang") === "en" ? "500 records" : "500 rekordów", price: 19 },
+    { records: t("lang") === "en" ? "2,000 records" : "2 000 rekordów", price: 59 },
+    { records: t("lang") === "en" ? "10,000 records" : "10 000 rekordów", price: 199 },
+  ]
+
+  const AI_PACKAGES = [
+    { queries: t("lang") === "en" ? "100 queries" : "100 zapytań", price: 19 },
+    { queries: t("lang") === "en" ? "500 queries" : "500 zapytań", price: 69 },
+    { queries: t("lang") === "en" ? "2,000 queries" : "2 000 zapytań", price: 199 },
+  ]
+
+  const isEn = t("common.yes") === "Yes"
+
   const PLANS = [
     {
       id: "free",
@@ -65,11 +67,11 @@ export default function CennikPage() {
         { label: t("pricing.featureFreeResults"), ok: true },
         { label: t("pricing.featureRegistry"), ok: true },
         { label: t("pricing.featureVat"), ok: true },
-        { label: "Filtry: miasto, woj., forma prawna, PKD", ok: true },
+        { label: isEn ? "Filters: city, voiv., legal form, PKD" : "Filtry: miasto, woj., forma prawna, PKD", ok: true },
         { label: t("pricing.featureContact"), ok: false },
-        { label: "Eksport CSV", ok: false },
+        { label: isEn ? "CSV Export" : "Eksport CSV", ok: false },
         { label: t("pricing.featureAi"), ok: false },
-        { label: "Monitoring firm", ok: false },
+        { label: isEn ? "Company monitoring" : "Monitoring firm", ok: false },
       ],
     },
     {
@@ -82,15 +84,15 @@ export default function CennikPage() {
       popular: true,
       cta: t("pricing.ctaBasic"),
       ctaHref: "/rejestracja?plan=basic",
-      trial: "🎁 Pierwsze 7 dni na poziomie Pro — w cenie Basic",
+      trial: isEn ? "🎁 First 7 days at Pro level — at Basic price" : "🎁 Pierwsze 7 dni na poziomie Pro — w cenie Basic",
       features: [
-        { label: "Wszystkie wyniki wyszukiwania", ok: true },
+        { label: isEn ? "All search results" : "Wszystkie wyniki wyszukiwania", ok: true },
         { label: t("pricing.featureContact"), ok: true },
-        { label: `Eksport CSV — 1 000 ${t("pricing.featureExports")}`, ok: true },
-        { label: `${t("pricing.featureAi")} — 30 ${t("pricing.featureAi")}`, ok: true },
-        { label: `Monitoring — 20 ${t("pricing.featureMonitoring")}`, ok: true },
-        { label: "Filtry premium (kontakty, kapitał, VAT)", ok: true },
-        { label: "Weryfikacja kontrahenta (podstawowa)", ok: true },
+        { label: `CSV — 1,000 ${t("pricing.featureExports")}`, ok: true },
+        { label: `${t("pricing.featureAi")} — 30/day`, ok: true },
+        { label: `${isEn ? "Monitoring" : "Monitoring"} — 20 ${t("pricing.featureMonitoring")}`, ok: true },
+        { label: isEn ? "Premium filters (contacts, capital, VAT)" : "Filtry premium (kontakty, kapitał, VAT)", ok: true },
+        { label: isEn ? "Basic contractor verification" : "Weryfikacja kontrahenta (podstawowa)", ok: true },
         { label: t("pricing.featureHistory"), ok: false },
       ],
     },
@@ -107,34 +109,32 @@ export default function CennikPage() {
       trial: null,
       features: [
         { label: t("pricing.featureAll"), ok: true },
-        { label: `Eksport CSV — 5 000 ${t("pricing.featureExports")}`, ok: true },
-        { label: `${t("pricing.featureAi")} — 100 zapytań/dzień`, ok: true },
-        { label: `Monitoring — 100 ${t("pricing.featureMonitoring")}`, ok: true },
+        { label: `CSV — 5,000 ${t("pricing.featureExports")}`, ok: true },
+        { label: `${t("pricing.featureAi")} — 100/day`, ok: true },
+        { label: `${isEn ? "Monitoring" : "Monitoring"} — 100 ${t("pricing.featureMonitoring")}`, ok: true },
         { label: t("pricing.featureHistory"), ok: true },
         { label: t("pricing.featureTabs"), ok: true },
-        { label: "Pełna weryfikacja kontrahenta", ok: true },
+        { label: isEn ? "Full contractor verification" : "Pełna weryfikacja kontrahenta", ok: true },
         { label: t("pricing.featureSupport"), ok: true },
       ],
     },
   ]
 
   const FAQ = [
-    {
-      q: t("pricing.faq.0.q"),
-      a: t("pricing.faq.0.a"),
-    },
-    {
-      q: t("pricing.faq.1.q"),
-      a: t("pricing.faq.1.a"),
-    },
-    {
-      q: t("pricing.faq.2.q"),
-      a: t("pricing.faq.2.a"),
-    },
-    {
-      q: t("pricing.faq.3.q"),
-      a: t("pricing.faq.3.a"),
-    },
+    { q: t("pricing.faq.0.q"), a: t("pricing.faq.0.a") },
+    { q: t("pricing.faq.1.q"), a: t("pricing.faq.1.a") },
+    { q: t("pricing.faq.2.q"), a: t("pricing.faq.2.a") },
+    { q: t("pricing.faq.3.q"), a: t("pricing.faq.3.a") },
+  ]
+
+  const comparisonRows = [
+    ["KRS + CEIDG", "✓", "✓", "✗", "✓"],
+    [t("pricing.featureContact"), "✓", "✓", "✓", isEn ? "partial" : "częściowo"],
+    [isEn ? "CSV list export" : "Eksport list CSV", "✓", "✗", "✓", "✓"],
+    [t("pricing.featureAi"), "✓", "✗", isEn ? "partial" : "częściowo", "✗"],
+    [isEn ? "Transparent pricing" : "Transparentne ceny", "✓", isEn ? "partial" : "częściowo", "✓", "✗"],
+    [isEn ? "Monitoring alerts" : "Monitoring alertów", "✓", "✓", isEn ? "partial" : "częściowo", "✗"],
+    [isEn ? "Modern interface" : "Nowoczesny interfejs", "✓", "✗", "✓", "✗"],
   ]
 
   return (
@@ -150,14 +150,16 @@ export default function CennikPage() {
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 48 }} className="fade-in">
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 100, padding: "5px 14px", fontSize: 11, fontWeight: 700, color: "#2563eb", letterSpacing: "0.06em", marginBottom: 20 }}>
-            <Zap size={11} /> CENY EARLY ADOPTER
+            <Zap size={11} /> {isEn ? "EARLY ADOPTER PRICING" : "CENY EARLY ADOPTER"}
           </div>
           <h1 style={{ fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 700, letterSpacing: "-0.04em", color: textColor, margin: "0 0 16px", lineHeight: 1.1 }}>
             {t("pricing.title")}<br />
             <span style={{ color: mutedColor, fontWeight: 400 }}>{t("pricing.subtitle")}</span>
           </h1>
           <p style={{ fontSize: 16, color: mutedColor, maxWidth: 440, margin: "0 auto 32px", lineHeight: 1.65 }}>
-            {t("pricing.toggleMonthly")} / {t("pricing.toggleYearly")}. {t("pricing.faq.0.a").slice(0, 50)}...
+            {isEn
+              ? "Monthly or yearly subscription. Cancel at any time."
+              : "Subskrypcja miesięczna lub roczna. Anuluj w dowolnym momencie."}
           </p>
 
           {/* Toggle */}
@@ -244,13 +246,17 @@ export default function CennikPage() {
         {/* À la carte */}
         <div style={{ marginBottom: 64 }}>
           <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <h2 style={{ fontSize: "clamp(20px, 3vw, 28px)", fontWeight: 700, letterSpacing: "-0.03em", color: textColor, margin: 0 }}>Dokup gdy potrzebujesz</h2>
-            <p style={{ fontSize: 14, color: mutedColor, marginTop: 8 }}>Jednorazowe pakiety dla Basic i Pro — nie wygasają, nie odnawiane automatycznie.</p>
+            <h2 style={{ fontSize: "clamp(20px, 3vw, 28px)", fontWeight: 700, letterSpacing: "-0.03em", color: textColor, margin: 0 }}>
+              {isEn ? "Buy when you need it" : "Dokup gdy potrzebujesz"}
+            </h2>
+            <p style={{ fontSize: 14, color: mutedColor, marginTop: 8 }}>
+              {isEn ? "One-time packages for Basic and Pro — don't expire, not auto-renewed." : "Jednorazowe pakiety dla Basic i Pro — nie wygasają, nie odnawiane automatycznie."}
+            </p>
           </div>
           <div className="alacarte-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
             {[
-              { title: "Pakiety eksportów", sub: "Dodatkowe rekordy CSV", icon: <Download size={16} color="#2563eb" />, iconBg: "#eff6ff", items: EXPORT_PACKAGES.map(p => ({ label: p.records, price: p.price })), accentColor: "#2563eb", accentBg: "#eff6ff" },
-              { title: "Tokeny AI", sub: "Dodatkowe zapytania AI", icon: <Brain size={16} color="#7c3aed" />, iconBg: "#faf5ff", items: AI_PACKAGES.map(p => ({ label: p.queries, price: p.price })), accentColor: "#7c3aed", accentBg: "#faf5ff" },
+              { title: isEn ? "Export packages" : "Pakiety eksportów", sub: isEn ? "Additional CSV records" : "Dodatkowe rekordy CSV", icon: <Download size={16} color="#2563eb" />, iconBg: "#eff6ff", items: EXPORT_PACKAGES.map(p => ({ label: p.records, price: p.price })), accentColor: "#2563eb", accentBg: "#eff6ff" },
+              { title: isEn ? "AI tokens" : "Tokeny AI", sub: isEn ? "Additional AI queries" : "Dodatkowe zapytania AI", icon: <Brain size={16} color="#7c3aed" />, iconBg: "#faf5ff", items: AI_PACKAGES.map(p => ({ label: p.queries, price: p.price })), accentColor: "#7c3aed", accentBg: "#faf5ff" },
             ].map(pkg => (
               <div key={pkg.title} style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: 16, padding: 28 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
@@ -266,7 +272,9 @@ export default function CennikPage() {
                       <span style={{ fontSize: 13, color: textColor }}>{item.label}</span>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <span style={{ fontSize: 14, fontWeight: 700, color: textColor }}>{item.price} zł</span>
-                        <Link href="/rejestracja" style={{ fontSize: 12, fontWeight: 600, color: pkg.accentColor, background: pkg.accentBg, borderRadius: 6, padding: "4px 10px", textDecoration: "none" }}>Kup</Link>
+                        <Link href="/rejestracja" style={{ fontSize: 12, fontWeight: 600, color: pkg.accentColor, background: pkg.accentBg, borderRadius: 6, padding: "4px 10px", textDecoration: "none" }}>
+                          {isEn ? "Buy" : "Kup"}
+                        </Link>
                       </div>
                     </div>
                   ))}
@@ -307,18 +315,10 @@ export default function CennikPage() {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  ["KRS + CEIDG",         "✓", "✓", "✗", "✓"],
-                  [t("pricing.featureContact"), "✓", "✓", "✓", "częściowo"],
-                  ["Eksport list CSV",    "✓", "✗", "✓", "✓"],
-                  [t("pricing.featureAi"), "✓", "✗", "częściowo", "✗"],
-                  ["Transparentne ceny",  "✓", "częściowo", "✓", "✗"],
-                  ["Monitoring alertów",  "✓", "✓", "częściowo", "✗"],
-                  ["Nowoczesny interfejs","✓", "✗", "✓", "✗"],
-                ].map((row, i) => (
+                {comparisonRows.map((row, i) => (
                   <tr key={i} style={{ borderBottom: i < 6 ? `1px solid ${borderColor}` : "none" }}>
                     {row.map((cell, j) => (
-                      <td key={j} style={{ padding: "13px 20px", textAlign: j === 0 ? "left" : "center", fontSize: 14, color: cell === "✓" ? "#22c55e" : cell === "✗" ? "#ef4444" : cell === "częściowo" ? "#f59e0b" : j === 0 ? textColor : mutedColor, fontWeight: j === 0 ? 500 : 400 }}>
+                      <td key={j} style={{ padding: "13px 20px", textAlign: j === 0 ? "left" : "center", fontSize: 14, color: cell === "✓" ? "#22c55e" : cell === "✗" ? "#ef4444" : (cell === "częściowo" || cell === "partial") ? "#f59e0b" : j === 0 ? textColor : mutedColor, fontWeight: j === 0 ? 500 : 400 }}>
                         {cell}
                       </td>
                     ))}
