@@ -19,8 +19,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type SearchItem = {
   nip: string | null
   krs_number: string | null
@@ -48,8 +46,6 @@ type SearchResponse =
   | { redirect: false; results: SearchItem[]; total: number; page: number; pages: number; detectedType: DetectedType }
 
 type PkdItem = { code: string; label: string; section: string }
-
-// ─── Constants ───────────────────────────────────────────────────────────────
 
 const WOJEWODZTWA = [
   "dolnośląskie","kujawsko-pomorskie","lubelskie","lubuskie",
@@ -107,8 +103,6 @@ const EXPORT_COLS_PRO = [
   { key: "ai_description", label: "Opis AI" },
 ]
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function firmAge(dateStr: string | null): string | null {
   if (!dateStr) return null
   const years = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24 * 365))
@@ -139,8 +133,6 @@ function downloadCSV(content: string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-
 function SkeletonRow({ dark }: { dark: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 20px", borderBottom: `1px solid ${dark ? "#1a1a1a" : "#f3f4f6"}` }}>
@@ -154,8 +146,6 @@ function SkeletonRow({ dark }: { dark: boolean }) {
   )
 }
 
-// ─── Premium filter wrapper ───────────────────────────────────────────────────
-
 function PremiumFilter({ children, dark }: { children: React.ReactNode; dark: boolean }) {
   return (
     <div style={{ position: "relative", userSelect: "none" }}>
@@ -168,8 +158,6 @@ function PremiumFilter({ children, dark }: { children: React.ReactNode; dark: bo
     </div>
   )
 }
-
-// ─── PKD Dropdown ─────────────────────────────────────────────────────────────
 
 function PkdDropdown({ value, onChange, dark }: { value: string; onChange: (v: string) => void; dark: boolean }) {
   const [open, setOpen] = useState(false)
@@ -279,8 +267,6 @@ function PkdDropdown({ value, onChange, dark }: { value: string; onChange: (v: s
   )
 }
 
-// ─── Export Modal ─────────────────────────────────────────────────────────────
-
 function ExportModal({ dark, mode, count, onConfirm, onCancel, loading }: {
   dark: boolean; mode: "page" | "all"; count: number
   onConfirm: () => void; onCancel: () => void; loading: boolean
@@ -333,8 +319,6 @@ function ExportModal({ dark, mode, count, onConfirm, onCancel, loading }: {
   )
 }
 
-// ─── Sidebar ─────────────────────────────────────────────────────────────────
-
 type SidebarProps = {
   dark: boolean
   q: string; setQ: (v: string) => void
@@ -361,7 +345,6 @@ function Sidebar({ dark, q, setQ, miejscowosc, setMiejscowosc, wojewodztwo, setW
 
   const content = (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Header z licznikiem i wyczyść */}
       {activeFiltersCount > 0 && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: "#2563eb", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 20, padding: "2px 10px" }}>
@@ -444,7 +427,6 @@ function Sidebar({ dark, q, setQ, miejscowosc, setMiejscowosc, wojewodztwo, setW
         </div>
       </div>
 
-      {/* Premium filtry */}
       <div style={{ borderTop: `1px solid ${border}`, paddingTop: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
           <Lock size={11} color="#2563eb" />
@@ -524,8 +506,6 @@ function Sidebar({ dark, q, setQ, miejscowosc, setMiejscowosc, wojewodztwo, setW
   )
 }
 
-// ─── Result row ───────────────────────────────────────────────────────────────
-
 function ResultRow({ item, dark, checked, onCheck, blurred, isPro }: {
   item: SearchItem; dark: boolean; checked: boolean
   onCheck: (nip: string) => void; blurred: boolean; isPro: boolean
@@ -546,11 +526,9 @@ function ResultRow({ item, dark, checked, onCheck, blurred, isPro }: {
         style={{ background: "none", border: "none", cursor: blurred ? "default" : "pointer", padding: 0, flexShrink: 0, color: checked ? "#2563eb" : mutedColor }}>
         {checked ? <CheckSquare size={16} /> : <Square size={16} />}
       </button>
-
       <div style={{ width: 38, height: 38, borderRadius: "50%", background: item.zrodlo === "KRS" ? "#eff6ff" : "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: item.zrodlo === "KRS" ? "#2563eb" : "#16a34a", flexShrink: 0 }}>
         {item.zrodlo === "KRS" ? initials : <User size={15} color="#16a34a" />}
       </div>
-
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: textColor, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {item.nazwa_pelna ?? "—"}
@@ -561,7 +539,6 @@ function ResultRow({ item, dark, checked, onCheck, blurred, isPro }: {
           {pkd && <><span style={{ color: "#d1d5db" }}>·</span><span style={{ overflow: "hidden", textOverflow: "ellipsis", maxWidth: 120 }}>{pkd}</span></>}
           {age && <><span style={{ color: "#d1d5db" }}>·</span><span>{age}</span></>}
         </p>
-        {/* Dane kontaktowe */}
         {hasContact && (
           <p style={{ fontSize: 11, color: mutedColor, margin: "4px 0 0", display: "flex", alignItems: "center", gap: 10 }}>
             {item.telefon && (
@@ -578,7 +555,6 @@ function ResultRow({ item, dark, checked, onCheck, blurred, isPro }: {
           </p>
         )}
       </div>
-
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", padding: "2px 8px", borderRadius: 100, background: item.zrodlo === "KRS" ? "#eff6ff" : "#f0fdf4", color: item.zrodlo === "KRS" ? "#2563eb" : "#16a34a" }}>{item.zrodlo}</span>
         <span style={{ fontSize: 10, fontWeight: 500, color: statusActive ? "#22c55e" : mutedColor }}>{statusActive ? "● Aktywny" : item.status ?? ""}</span>
@@ -608,8 +584,6 @@ function ResultRow({ item, dark, checked, onCheck, blurred, isPro }: {
   )
 }
 
-// ─── Detection Toast ──────────────────────────────────────────────────────────
-
 function DetectionToast({ detected, dark }: { detected: DetectedType; dark: boolean }) {
   if (!detected) return null
   const label = DETECTED_LABELS[detected.type] ?? "Wykryto specjalne zapytanie"
@@ -620,8 +594,6 @@ function DetectionToast({ detected, dark }: { detected: DetectedType; dark: bool
     </div>
   )
 }
-
-// ─── Main ─────────────────────────────────────────────────────────────────────
 
 function SearchPage() {
   const router = useRouter()
@@ -659,7 +631,6 @@ function SearchPage() {
   const mutedColor = dark ? "#555" : "#9ca3af"
   const bg = dark ? "#0a0a0a" : "#f8f9fb"
 
-  // Liczba aktywnych filtrów (bez q)
   const activeFiltersCount = [miejscowosc, wojewodztwo, formaP, zrodlo, status, pkd].filter(Boolean).length
 
   const clearAll = () => {
@@ -738,11 +709,35 @@ function SearchPage() {
         }
         rows = all.map(r => ({ ...r }))
       }
+
       const date = new Date().toISOString().slice(0, 10)
-      downloadCSV(generateCSV(rows, cols), `nipgo_eksport_${date}.csv`)
+      const filename = `nipgo_eksport_${date}_${Date.now()}.csv`
+      const csvContent = generateCSV(rows, cols)
+
+      // Zapisz do Storage + historia
+      try {
+        await fetch("/api/export", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            csvContent,
+            filename,
+            recordCount: rows.length,
+            filters: { q, miejscowosc, wojewodztwo, formaP, zrodlo, status, pkd },
+          }),
+        })
+      } catch {
+        console.warn("Storage save failed, downloading directly")
+      }
+
+      // Pobierz lokalnie zawsze
+      downloadCSV(csvContent, filename)
       setExportModal(null)
-    } catch { alert("Błąd eksportu — spróbuj ponownie") }
-    finally { setExportLoading(false) }
+    } catch {
+      alert("Błąd eksportu — spróbuj ponownie")
+    } finally {
+      setExportLoading(false)
+    }
   }
 
   return (
@@ -796,11 +791,8 @@ function SearchPage() {
           setMobileOpen={setMobileOpen} activeFiltersCount={activeFiltersCount} onClear={clearAll} />
 
         <div style={{ flex: 1, minWidth: 0 }}>
-
-          {/* Detection toast */}
           {detectedType && <DetectionToast detected={detectedType} dark={dark} />}
 
-          {/* Stats bar */}
           {searched && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
               <span style={{ fontSize: 13, color: mutedColor }}>
@@ -844,14 +836,11 @@ function SearchPage() {
             </div>
           )}
 
-          {/* Empty state z przykładami */}
           {!searched && !loading && (
             <div style={{ textAlign: "center", padding: "48px 32px", color: mutedColor }}>
               <Search size={36} style={{ opacity: 0.15, marginBottom: 16 }} />
               <p style={{ fontSize: 15, fontWeight: 500, color: textColor, marginBottom: 6 }}>Znajdź firmy w Polsce</p>
               <p style={{ fontSize: 13, marginBottom: 24 }}>Wpisz nazwę, NIP, REGON, email, telefon, domenę, kod pocztowy lub imię właściciela</p>
-
-              {/* Przykłady wyszukiwań */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 20 }}>
                 {EXAMPLE_SEARCHES.map(ex => (
                   <button key={ex.label} onClick={() => {
@@ -866,7 +855,6 @@ function SearchPage() {
                   </button>
                 ))}
               </div>
-
               {!isPro && (
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 8, padding: "7px 14px" }}>
                   <Zap size={12} color="#2563eb" />
@@ -877,7 +865,6 @@ function SearchPage() {
             </div>
           )}
 
-          {/* Paginacja */}
           {!loading && pages > 1 && (
             <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
               <button onClick={() => doSearch(page - 1)} disabled={page === 1} style={{ padding: "7px 12px", fontSize: 13, borderRadius: 8, border: `1px solid ${border}`, background: cardBg, color: page === 1 ? mutedColor : textColor, cursor: page === 1 ? "default" : "pointer", opacity: page === 1 ? 0.4 : 1 }}>←</button>
@@ -889,7 +876,6 @@ function SearchPage() {
             </div>
           )}
 
-          {/* Free limit baner */}
           {!isPro && searched && !loading && results && results.length > FREE_LIMIT && (
             <div style={{ marginTop: 16, padding: "14px 20px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
               <div>
