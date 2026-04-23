@@ -158,7 +158,7 @@ export function Navbar({ theme, onThemeToggle, lang, onLangToggle }: NavbarProps
     ? { label: "Basic", bg: "#f5f3ff", color: "#7c3aed" }
     : null
 
-  if (pathname === "/login") return null
+  if (pathname === "/login" || pathname === "/rejestracja") return null
 
   return (
     <>
