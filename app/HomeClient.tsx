@@ -27,8 +27,7 @@ function HeroSearch({ dark }: { dark: boolean }) {
     router.push(`/search?q=${encodeURIComponent(q.trim())}`)
   }
 
-  const examples = t("home.searchExamples").split ? (t("home.searchExamples") as any) : ["producenci opakowań Poznań", "sp. z o.o. IT Warszawa", "hurtownie elektryczne"]
-  const exampleList: string[] = Array.isArray(examples) ? examples : ["producenci opakowań Poznań", "sp. z o.o. IT Warszawa", "hurtownie elektryczne"]
+  const exampleList: string[] = ["producenci opakowań Poznań", "sp. z o.o. IT Warszawa", "hurtownie elektryczne"]
 
   return (
     <div style={{ width: "100%" }}>
