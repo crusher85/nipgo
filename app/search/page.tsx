@@ -350,6 +350,7 @@ type SidebarProps = {
 }
 
 function Sidebar({ dark, q, setQ, miejscowosc, setMiejscowosc, wojewodztwo, setWojewodztwo, formaP, setFormaP, zrodlo, setZrodlo, status, setStatus, pkd, setPkd, isPro, onSearch, loading, mobileOpen, setMobileOpen, activeFiltersCount, onClear }: SidebarProps) {
+  const t = useT()
   const border = dark ? "#222" : "#e8eaed"
   const cardBg = dark ? "#111" : "#fff"
   const textColor = dark ? "#f5f5f5" : "#111"
