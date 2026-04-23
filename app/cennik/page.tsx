@@ -17,7 +17,7 @@ const PLANS = [
     desc: "Do przeglądania i weryfikacji",
     color: "#6b7280",
     popular: false,
-    cta: t("pricing.ctaFree"),
+    cta: "Zacznij za darmo",
     ctaHref: "/rejestracja",
     trial: null,
     features: [
@@ -39,7 +39,7 @@ const PLANS = [
     desc: "Dla handlowców i małych zespołów",
     color: "#2563eb",
     popular: true,
-    cta: t("pricing.ctaBasic"),
+    cta: "Zacznij Basic",
     ctaHref: "/rejestracja?plan=basic",
     trial: "🎁 Pierwsze 7 dni na poziomie Pro — w cenie Basic",
     features: [
@@ -61,7 +61,7 @@ const PLANS = [
     desc: "Dla działów sprzedaży i agencji",
     color: "#7c3aed",
     popular: false,
-    cta: t("pricing.ctaPro"),
+    cta: "Zacznij Pro",
     ctaHref: "/rejestracja?plan=pro",
     trial: null,
     features: [
