@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useTheme } from "@/components/ThemeProvider"
 import Link from "next/link"
@@ -10,20 +10,20 @@ const PLANS = [
   {
     id: "free",
     name: "Free",
-    price: "0 z┼é",
+    price: "0 zł",
     period: "",
-    desc: "Na start ÔÇö bez karty",
-    features: ["10 wynik├│w wyszukiwania", "Dane rejestrowe firm", "Status VAT"],
+    desc: "Na start — bez karty",
+    features: ["10 wyników wyszukiwania", "Dane rejestrowe firm", "Status VAT"],
     color: "#6b7280",
     bg: "transparent",
   },
   {
     id: "basic",
     name: "Basic",
-    price: "59 z┼é",
+    price: "59 zł",
     period: "/mies.",
     desc: "7 dni Pro gratis",
-    features: ["25 wynik├│w / strona", "Dane kontaktowe", "1000 eksport├│w / mies.", "20 firm w monitoringu"],
+    features: ["25 wyników / strona", "Dane kontaktowe", "1000 eksportów / mies.", "20 firm w monitoringu"],
     color: "#2563eb",
     bg: "transparent",
     popular: false,
@@ -31,17 +31,17 @@ const PLANS = [
   {
     id: "pro",
     name: "Pro",
-    price: "119 z┼é",
+    price: "119 zł",
     period: "/mies.",
-    desc: "Pe┼ény dost─Öp",
-    features: ["Wszystko z Basic", "5000 eksport├│w / mies.", "100 firm w monitoringu", "AI wyszukiwanie", "Historia zmian"],
+    desc: "Pełny dostęp",
+    features: ["Wszystko z Basic", "5000 eksportów / mies.", "100 firm w monitoringu", "AI wyszukiwanie", "Historia zmian"],
     color: "#2563eb",
     bg: "transparent",
     popular: true,
   },
 ]
 
-export default function RejestracjaPage() {
+function RejestracjaInner() {
   const searchParams = useSearchParams()
   const initialPlan = searchParams.get("plan") || "free"
   const [step, setStep] = useState<1 | 2>(1)
@@ -88,7 +88,7 @@ export default function RejestracjaPage() {
       },
     })
     if (error) {
-      setError(error.message === "User already registered" ? "Ten email jest ju┼╝ zarejestrowany." : error.message)
+      setError(error.message === "User already registered" ? "Ten email jest już zarejestrowany." : error.message)
     } else {
       setSuccess(true)
     }
@@ -106,13 +106,13 @@ export default function RejestracjaPage() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h2 style={{ fontSize: 20, fontWeight: 600, color: textColor, marginBottom: 8 }}>Sprawd┼║ skrzynk─Ö email</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: textColor, marginBottom: 8 }}>Sprawdź skrzynkę email</h2>
           <p style={{ fontSize: 14, color: mutedColor, lineHeight: 1.6 }}>
-            Wys┼éali┼Ťmy link potwierdzaj─ůcy na <strong style={{ color: textColor }}>{email}</strong>.<br />
-            Kliknij w link ┼╝eby aktywowa─ç konto.
+            Wysłaliśmy link potwierdzający na <strong style={{ color: textColor }}>{email}</strong>.<br />
+            Kliknij w link żeby aktywować konto.
           </p>
           <Link href="/login" style={{ display: "inline-block", marginTop: 24, fontSize: 14, color: "#2563eb", fontWeight: 500, textDecoration: "none" }}>
-            Wr├│─ç do logowania Ôćĺ
+            Wróć do logowania →
           </Link>
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function RejestracjaPage() {
         <div style={{ marginBottom: 36 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: step === 1 ? "#2563eb" : mutedColor }}>1. Wybierz plan</span>
-            <span style={{ fontSize: 13, fontWeight: 500, color: step === 2 ? "#2563eb" : mutedColor }}>2. Utw├│rz konto</span>
+            <span style={{ fontSize: 13, fontWeight: 500, color: step === 2 ? "#2563eb" : mutedColor }}>2. Utwórz konto</span>
           </div>
           <div style={{ height: 3, background: dark ? "#1e1e1e" : "#e8eaed", borderRadius: 4, overflow: "hidden" }}>
             <div style={{ height: "100%", width: `${progressPct}%`, background: "#2563eb", borderRadius: 4, transition: "width 0.3s ease" }} />
@@ -142,14 +142,14 @@ export default function RejestracjaPage() {
           </Link>
         </div>
 
-        {/* KROK 1 ÔÇö wyb├│r planu */}
+        {/* KROK 1 — wybór planu */}
         {step === 1 && (
           <>
             <h1 style={{ fontSize: 22, fontWeight: 600, color: textColor, textAlign: "center", marginBottom: 6 }}>
               Wybierz plan
             </h1>
             <p style={{ fontSize: 14, color: mutedColor, textAlign: "center", marginBottom: 28 }}>
-              Mo┼╝esz zmieni─ç plan w dowolnym momencie
+              Możesz zmienić plan w dowolnym momencie
             </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 28 }}>
@@ -206,35 +206,35 @@ export default function RejestracjaPage() {
             <div style={{ display: "flex", justifyContent: "center" }}>
               <button onClick={() => setStep(2)}
                 style={{ padding: "13px 40px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-                Dalej Ôćĺ
+                Dalej →
               </button>
             </div>
 
             <p style={{ textAlign: "center", fontSize: 13, color: mutedColor, marginTop: 16 }}>
-              Masz ju┼╝ konto?{" "}
-              <Link href="/login" style={{ color: "#2563eb", fontWeight: 500, textDecoration: "none" }}>Zaloguj si─Ö</Link>
+              Masz już konto?{" "}
+              <Link href="/login" style={{ color: "#2563eb", fontWeight: 500, textDecoration: "none" }}>Zaloguj się</Link>
             </p>
           </>
         )}
 
-        {/* KROK 2 ÔÇö tworzenie konta */}
+        {/* KROK 2 — tworzenie konta */}
         {step === 2 && (
           <div style={{ background: cardBg, border: `1px solid ${borderColor}`, borderRadius: 20, padding: "36px 32px" }}>
             <button onClick={() => setStep(1)} style={{ background: "none", border: "none", cursor: "pointer", color: mutedColor, fontSize: 13, marginBottom: 20, padding: 0, display: "flex", alignItems: "center", gap: 5, fontFamily: "inherit" }}>
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <polyline points="15 18 9 12 15 6" />
               </svg>
-              Wr├│─ç
+              Wróć
             </button>
 
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: textColor, margin: 0 }}>Utw├│rz konto</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: textColor, margin: 0 }}>Utwórz konto</h2>
               <span style={{ fontSize: 11, fontWeight: 700, background: dark ? "#1e2a3a" : "#eff6ff", color: "#2563eb", padding: "3px 8px", borderRadius: 6 }}>
                 Plan {PLANS.find(p => p.id === selectedPlan)?.name}
               </span>
             </div>
             <p style={{ fontSize: 13, color: mutedColor, marginBottom: 24 }}>
-              {selectedPlan === "free" ? "Darmowy dost─Öp ÔÇö bez karty kredytowej" : "Zacznij od 7 dni Pro gratis"}
+              {selectedPlan === "free" ? "Darmowy dostęp — bez karty kredytowej" : "Zacznij od 7 dni Pro gratis"}
             </p>
 
             <button onClick={handleGoogle} disabled={loading}
@@ -263,11 +263,11 @@ export default function RejestracjaPage() {
               <form onSubmit={handleEmail}>
                 <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required
                   style={{ width: "100%", padding: "12px 14px", border: `1px solid ${inputBorder}`, borderRadius: 10, fontSize: 14, marginBottom: 10, outline: "none", boxSizing: "border-box", fontFamily: "inherit", background: cardBg, color: textColor }} />
-                <input type="password" placeholder="Has┼éo (min. 8 znak├│w)" value={password} onChange={e => setPassword(e.target.value)} required minLength={8}
+                <input type="password" placeholder="Hasło (min. 8 znaków)" value={password} onChange={e => setPassword(e.target.value)} required minLength={8}
                   style={{ width: "100%", padding: "12px 14px", border: `1px solid ${inputBorder}`, borderRadius: 10, fontSize: 14, marginBottom: 16, outline: "none", boxSizing: "border-box", fontFamily: "inherit", background: cardBg, color: textColor }} />
                 <button type="submit" disabled={loading}
                   style={{ width: "100%", padding: "12px 20px", border: "none", borderRadius: 12, background: "#2563eb", color: "#fff", fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, fontFamily: "inherit" }}>
-                  {loading ? "..." : "Zarejestruj si─Ö"}
+                  {loading ? "..." : "Zarejestruj się"}
                 </button>
               </form>
             )}
@@ -275,19 +275,27 @@ export default function RejestracjaPage() {
             {error && <p style={{ fontSize: 13, color: "#ef4444", marginTop: 12, textAlign: "center" }}>{error}</p>}
 
             <p style={{ fontSize: 11, color: mutedColor, textAlign: "center", marginTop: 20, lineHeight: 1.6 }}>
-              Rejestruj─ůc si─Ö akceptujesz{" "}
+              Rejestrując się akceptujesz{" "}
               <Link href="/regulamin" style={{ color: "#2563eb", textDecoration: "none" }}>Regulamin</Link>
               {" "}i{" "}
-              <Link href="/polityka-prywatnosci" style={{ color: "#2563eb", textDecoration: "none" }}>Polityk─Ö prywatno┼Ťci</Link>
+              <Link href="/polityka-prywatnosci" style={{ color: "#2563eb", textDecoration: "none" }}>Politykę prywatności</Link>
             </p>
 
             <p style={{ fontSize: 13, color: mutedColor, textAlign: "center", marginTop: 12 }}>
-              Masz ju┼╝ konto?{" "}
-              <Link href="/login" style={{ color: "#2563eb", fontWeight: 500, textDecoration: "none" }}>Zaloguj si─Ö</Link>
+              Masz już konto?{" "}
+              <Link href="/login" style={{ color: "#2563eb", fontWeight: 500, textDecoration: "none" }}>Zaloguj się</Link>
             </p>
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+export default function RejestracjaPage() {
+  return (
+    <Suspense>
+      <RejestracjaInner />
+    </Suspense>
   )
 }
