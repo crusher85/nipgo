@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useTheme } from "@/components/ThemeProvider"
+import { useT } from "@/lib/i18n"
 import { createClient } from "@/lib/supabase/client"
 import {
   ChevronLeft, Download, Bell, BellOff, Lock, ExternalLink,
@@ -173,6 +174,7 @@ function makeS(dark: boolean) {
 }
 
 function Field({ label, value, children, S }: { label: string; value?: string | null; children?: React.ReactNode; S: ReturnType<typeof makeS> }) {
+  const t = useT()
   const content = children ?? value
   if (!content && content !== 0) return null
   return (
@@ -184,6 +186,7 @@ function Field({ label, value, children, S }: { label: string; value?: string | 
 }
 
 function PersonRow({ rep, S }: { rep: Rep; S: ReturnType<typeof makeS> }) {
+  const t = useT()
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: `1px solid ${S.borderLight}` }}>
       <div style={S.avatar}>{getInitials(rep.name) || "?"}</div>
@@ -196,13 +199,16 @@ function PersonRow({ rep, S }: { rep: Rep; S: ReturnType<typeof makeS> }) {
 }
 
 function ProBadge({ dark }: { dark: boolean }) {
+  const t = useT()
   return <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: dark ? "#1a1060" : "#ede9fe", color: dark ? "#7c6fff" : "#7c3aed", padding: "2px 7px", borderRadius: 4, marginLeft: 6, textTransform: "uppercase" as const }}>PRO</span>
 }
 function FreeBadge({ dark }: { dark: boolean }) {
+  const t = useT()
   return <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: dark ? "#0d2218" : "#dcfce7", color: dark ? "#22c55e" : "#16a34a", padding: "2px 7px", borderRadius: 4, marginLeft: 6, textTransform: "uppercase" as const }}>free</span>
 }
 
 function ProPaywall({ dark, S, desc }: { dark: boolean; S: ReturnType<typeof makeS>; desc: string }) {
+  const t = useT()
   return (
     <div style={{ position: "relative", minHeight: 360, borderRadius: 16, overflow: "hidden", border: `1px solid ${dark ? "#1a1a1a" : "#e8eaed"}`, background: dark ? "#0d0d0d" : "#f9fafb" }}>
       <div style={{ padding: 32, filter: "blur(2px)", pointerEvents: "none", userSelect: "none" }}>
@@ -225,6 +231,7 @@ function KontekstRow({ kontekst, city, voivodeship, pkdCode, dark, S, isPro }: {
   city: string; voivodeship: string; pkdCode: string
   dark: boolean; S: ReturnType<typeof makeS>; isPro: boolean
 }) {
+  const t = useT()
   const cityName = sc(city) || "mieście"
   const vojName = sc(voivodeship) || "województwie"
   const pkdShort = pkdCode?.split(/[\s—]/)[0] || ""
@@ -292,6 +299,7 @@ function KontekstRow({ kontekst, city, voivodeship, pkdCode, dark, S, isPro }: {
 }
 
 export function FirmaView(props: FirmaViewProps) {
+  const t = useT()
   const [tab, setTab] = useState<Tab>("podstawowe")
   const [userPlan, setUserPlan] = useState<string>("free")
   const [userId, setUserId] = useState<string | null>(null)
@@ -326,18 +334,18 @@ export function FirmaView(props: FirmaViewProps) {
     if (isMonitored) {
       await supabase.rpc("remove_from_monitoring", { p_nip: props.nip })
       setIsMonitored(false)
-      showToast("Usunięto z monitoringu", true)
+      showToast(t("firma.toastRemoved"), true)
     } else {
       const { data } = await supabase.rpc("add_to_monitoring", { p_nip: props.nip })
       if (data?.ok) {
         setIsMonitored(true)
-        showToast("Dodano do monitoringu", true)
+        showToast(t("firma.toastAdded"), true)
       } else if (data?.error === "limit") {
         showToast(`Limit monitoringu (${data.limit} firm) osiągnięty`, false)
       } else if (data?.error === "not_found") {
-        showToast("Nie znaleziono firmy w bazie", false)
+        showToast(t("firma.toastNotFound"), false)
       } else {
-        showToast("Błąd — spróbuj ponownie", false)
+        showToast(t("firma.toastError"), false)
       }
     }
     setMonitorLoading(false)
@@ -361,7 +369,7 @@ export function FirmaView(props: FirmaViewProps) {
     wspolnoscMajatkowa, adresDoreczenia, kontekst,
   } = props
 
-  const formaWlasnosciDisplay = isCEIDG ? "Jednoosobowa działalność gospodarcza" : (formaWlasnosci ? sc(formaWlasnosci) : null)
+  const formaWlasnosciDisplay = isCEIDG ? t("firma.valueCeidgForm") : (formaWlasnosci ? sc(formaWlasnosci) : null)
   const st = resolveStatus(statusKrs)
   const age = formatAge(registrationDate)
   const vat = resolveVatStatus(vatStatus)
@@ -394,11 +402,11 @@ export function FirmaView(props: FirmaViewProps) {
   ]
 
   const TABS: { key: Tab; label: string; sub: string; pro: boolean; icon: React.ReactNode }[] = [
-    { key: "podstawowe", label: "Podstawowe", sub: "Dane rejestrowe", pro: false, icon: <Building2 size={14} /> },
-    { key: "finanse",    label: "Finanse",    sub: "Sprawozdania",    pro: true,  icon: <TrendingUp size={14} /> },
-    { key: "ryzyko",     label: "Ryzyko",     sub: "Scoring",         pro: true,  icon: <Shield size={14} /> },
-    { key: "sygnaly",    label: "Sygnały",    sub: "Zdarzenia",       pro: true,  icon: <Zap size={14} /> },
-    { key: "dotacje",    label: "Dotacje",    sub: "Pomoc publiczna", pro: true,  icon: <Globe size={14} /> },
+    { key: "podstawowe", label: t("firma.tabBasic"), sub: t("firma.tabBasicSub"), pro: false, icon: <Building2 size={14} /> },
+    { key: "finanse",    label: t("firma.tabFinance"), sub: t("firma.tabFinanceSub"),    pro: true,  icon: <TrendingUp size={14} /> },
+    { key: "ryzyko",     label: t("firma.tabRisk"), sub: t("firma.tabRiskSub"),         pro: true,  icon: <Shield size={14} /> },
+    { key: "sygnaly",    label: t("firma.tabSignals"), sub: t("firma.tabSignalsSub"),       pro: true,  icon: <Zap size={14} /> },
+    { key: "dotacje",    label: t("firma.tabGrants"), sub: t("firma.tabGrantsSub"), pro: true,  icon: <Globe size={14} /> },
   ]
 
   const PRO_DESC: Partial<Record<Tab, string>> = {
@@ -526,26 +534,26 @@ export function FirmaView(props: FirmaViewProps) {
               {/* Dane rejestrowe */}
               <div style={S.card}>
                 <div style={S.cardHeader}><span style={S.label}>Dane rejestrowe</span></div>
-                <Field S={S} label="Pełna nazwa" value={displayName} />
-                <Field S={S} label="Forma prawna" value={sc(legalForm)} />
-                <Field S={S} label="Forma własności" value={formaWlasnosciDisplay} />
-                <Field S={S} label={isCEIDG ? "Data rozpoczęcia" : "Data rejestracji"} value={fmtDate(registrationDate) || undefined} />
-                {dataZawieszenia && <Field S={S} label="Data zawieszenia" value={fmtDate(dataZawieszenia)} />}
-                {dataWznowienia && <Field S={S} label="Data wznowienia" value={fmtDate(dataWznowienia)} />}
-                {dataZakonczenia && <Field S={S} label="Data zakończenia" value={fmtDate(dataZakonczenia)} />}
-                <Field S={S} label="Adres siedziby" value={address.full || undefined} />
-                {address.voivodeship && <Field S={S} label="Województwo" value={sc(address.voivodeship)} />}
-                {krs && <Field S={S} label="Numer KRS" value={krs} />}
-                {regon && <Field S={S} label="REGON" value={formatRegon(regon)} />}
-                <Field S={S} label="NIP" value={nip} />
-                {!isCEIDG && capitalFmt && <Field S={S} label="Kapitał zakładowy" value={capitalFmt} />}
-                {ownerName && <Field S={S} label="Właściciel" value={fmtPerson(ownerName)} />}
-                {organRejestrowy && <Field S={S} label="Organ rejestrowy" value={sc(organRejestrowy)} />}
-                {liczbaPracownikow && <Field S={S} label="Liczba pracowników" value={liczbaPracownikow} />}
-                {!isCEIDG && ostatnieSprRok && <Field S={S} label="Ostatnie sprawozdanie" value={String(ostatnieSprRok)} />}
-                {!isCEIDG && celDzialania && <Field S={S} label="Cel działania" value={sc(celDzialania)} />}
+                <Field S={S} label={t("firma.fieldName")} value={displayName} />
+                <Field S={S} label={t("firma.fieldLegalForm")} value={sc(legalForm)} />
+                <Field S={S} label={t("firma.fieldOwnership")} value={formaWlasnosciDisplay} />
+                <Field S={S} label={t(isCEIDG ? "firma.fieldStartDate" : "firma.fieldRegDate")} value={fmtDate(registrationDate) || undefined} />
+                {dataZawieszenia && <Field S={S} label={t("firma.fieldSuspDate")} value={fmtDate(dataZawieszenia)} />}
+                {dataWznowienia && <Field S={S} label={t("firma.fieldResumeDate")} value={fmtDate(dataWznowienia)} />}
+                {dataZakonczenia && <Field S={S} label={t("firma.fieldEndDate")} value={fmtDate(dataZakonczenia)} />}
+                <Field S={S} label={t("firma.fieldAddress")} value={address.full || undefined} />
+                {address.voivodeship && <Field S={S} label={t("firma.fieldVoivodeship")} value={sc(address.voivodeship)} />}
+                {krs && <Field S={S} label={t("firma.fieldKrs")} value={krs} />}
+                {regon && <Field S={S} label={t("firma.fieldRegon")} value={formatRegon(regon)} />}
+                <Field S={S} label={t("firma.fieldNip")} value={nip} />
+                {!isCEIDG && capitalFmt && <Field S={S} label={t("firma.fieldCapital")} value={capitalFmt} />}
+                {ownerName && <Field S={S} label={t("firma.fieldOwner")} value={fmtPerson(ownerName)} />}
+                {organRejestrowy && <Field S={S} label={t("firma.fieldOrgan")} value={sc(organRejestrowy)} />}
+                {liczbaPracownikow && <Field S={S} label={t("firma.fieldEmployees")} value={liczbaPracownikow} />}
+                {!isCEIDG && ostatnieSprRok && <Field S={S} label={t("firma.fieldLastReport")} value={String(ostatnieSprRok)} />}
+                {!isCEIDG && celDzialania && <Field S={S} label={t("firma.fieldPurpose")} value={sc(celDzialania)} />}
                 {flagaRyzyka && <Field S={S} label="Flaga ryzyka"><span style={{ color: "#ef4444", fontWeight: 600 }}>⚠ Wykryto ryzyko</span></Field>}
-                {isCEIDG && uprawieniaInfo && <Field S={S} label="Uprawnienia" value={uprawieniaInfo} />}
+                {isCEIDG && uprawieniaInfo && <Field S={S} label={t("firma.fieldPermits")} value={uprawieniaInfo} />}
               </div>
 
               {isCEIDG && ownerName && (
@@ -577,7 +585,7 @@ export function FirmaView(props: FirmaViewProps) {
                   </div>
                   <div style={{ filter: isPro ? "none" : "blur(5px)", pointerEvents: isPro ? "auto" : "none", userSelect: isPro ? "auto" : "none" }}>
                     {wspolnoscMajatkowa !== null && (
-                      <Field S={S} label="Wspólność majątkowa">
+                      <Field S={S} label={t("firma.fieldSpouseProperty")}>
                         <span style={{ color: wspolnoscMajatkowa ? "#f59e0b" : S.textValue, fontWeight: wspolnoscMajatkowa ? 600 : 400 }}>
                           {wspolnoscMajatkowa ? "⚠ Tak — ustrój wspólności" : "Nie (rozdzielność)"}
                         </span>
@@ -601,7 +609,7 @@ export function FirmaView(props: FirmaViewProps) {
                     <span style={S.label}>VAT / Biała Lista MF</span>
                     {!isPro && hasAccounts && <span style={{ fontSize: 10, fontWeight: 600, color: "#7c3aed", background: dark ? "#1a1060" : "#ede9fe", padding: "2px 8px", borderRadius: 4, letterSpacing: "0.06em" }}>BASIC+</span>}
                   </div>
-                  <Field S={S} label="Status VAT">
+                  <Field S={S} label={t("firma.sectionVat")}>
                     <span style={{ color: vat.color, fontWeight: 600 }}>
                       <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: vat.color, marginRight: 6, verticalAlign: "middle" }} />{vat.label}
                     </span>
@@ -634,7 +642,7 @@ export function FirmaView(props: FirmaViewProps) {
                     {!isPro && <span style={{ fontSize: 10, fontWeight: 600, color: "#7c3aed", background: dark ? "#1a1060" : "#ede9fe", padding: "2px 8px", borderRadius: 4, letterSpacing: "0.06em" }}>BASIC+</span>}
                   </div>
                   <div style={{ filter: isPro ? "none" : "blur(5px)", pointerEvents: isPro ? "auto" : "none", userSelect: isPro ? "auto" : "none" }}>
-                    {contact.phone && <Field S={S} label="Telefon" value={contact.phone} />}
+                    {contact.phone && <Field S={S} label="Tel" value={contact.phone} />}
                     {contact.phoneMobile && <Field S={S} label="Komórkowy" value={contact.phoneMobile} />}
                     {contact.email && <Field S={S} label="E-mail" value={contact.email} />}
                     {contact.website && <Field S={S} label="Strona WWW"><a href={contact.website.startsWith("http") ? contact.website : `https://${contact.website}`} target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>{contact.website}</a></Field>}
@@ -763,9 +771,9 @@ export function FirmaView(props: FirmaViewProps) {
 
                   {/* Pozostałe akcje */}
                   {[
-                    { icon: <Printer size={12} />, label: "Drukuj / PDF" },
-                    { icon: <Share2 size={12} />, label: "Udostępnij" },
-                    { icon: <Flag size={12} />, label: "Zgłoś błąd" },
+                    { icon: <Printer size={12} />, label: {t("firma.btnPrint")} },
+                    { icon: <Share2 size={12} />, label: {t("firma.btnShare")} },
+                    { icon: <Flag size={12} />, label: {t("firma.btnReportError")} },
                     ...(krsLink ? [{ icon: <ExternalLink size={12} />, label: `Wpis w ${source}`, href: krsLink }] : []),
                   ].map((a, i) => (
                     "href" in a

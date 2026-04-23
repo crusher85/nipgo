@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState, useCallback, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@supabase/supabase-js"
 import { useTheme } from "@/components/ThemeProvider"
+import { useT } from "@/lib/i18n"
 import { useUser } from "@/hooks/useUser"
 import {
   Search, ChevronRight, MapPin, Lock, ChevronDown,
@@ -85,10 +86,10 @@ const EXPORT_COLS_BASIC = [
   { key: "ulica", label: "Ulica" },
   { key: "nr_budynku", label: "Nr budynku" },
   { key: "kod_pocztowy", label: "Kod pocztowy" },
-  { key: "miejscowosc", label: "Miejscowość" },
+  { key: "miejscowosc", label: t("search.filterCity") },
   { key: "powiat", label: "Powiat" },
-  { key: "wojewodztwo", label: "Województwo" },
-  { key: "forma_prawna", label: "Forma prawna" },
+  { key: "wojewodztwo", label: t("search.filterVoivodeship") },
+  { key: "forma_prawna", label: t("search.filterLegalForm") },
   { key: "pkd_glowne", label: "PKD główne" },
   { key: "status", label: "Status" },
   { key: "data_rejestracji", label: "Data rejestracji" },
@@ -376,7 +377,7 @@ function Sidebar({ dark, q, setQ, miejscowosc, setMiejscowosc, wojewodztwo, setW
         <div style={{ position: "relative" }}>
           <Search size={14} color={mutedColor} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
           <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === "Enter" && onSearch()}
-            placeholder="nazwa, NIP, KRS, email..." style={{ ...inputStyle, paddingLeft: 32 }} />
+            placeholder={t("search.placeholder")} style={{ ...inputStyle, paddingLeft: 32 }} />
         </div>
       </div>
 
@@ -433,7 +434,7 @@ function Sidebar({ dark, q, setQ, miejscowosc, setMiejscowosc, wojewodztwo, setW
       <div>
         <label style={labelStyle}>Status</label>
         <div style={{ display: "flex", gap: 6 }}>
-          {[{ v: "", l: "Wszystkie" }, { v: "aktywne", l: "Aktywne" }].map(({ v, l }) => (
+          {[{ v: "", l: t("search.filterStatusAll") }, { v: "aktywne", l: t("search.filterStatusActive") }].map(({ v, l }) => (
             <button key={v} type="button" onClick={() => setStatus(v)}
               style={{ flex: 1, padding: "7px 4px", fontSize: 12, fontWeight: 500, border: `1px solid ${status === v ? "#2563eb" : border}`, borderRadius: 8, background: status === v ? "#eff6ff" : cardBg, color: status === v ? "#2563eb" : mutedColor, cursor: "pointer" }}>
               {l}
@@ -494,7 +495,7 @@ function Sidebar({ dark, q, setQ, miejscowosc, setMiejscowosc, wojewodztwo, setW
         <button onClick={onSearch} disabled={loading}
           style={{ width: "100%", padding: "10px 0", fontSize: 14, fontWeight: 600, background: "#2563eb", color: "#fff", border: "none", borderRadius: 10, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           {loading ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Search size={14} />}
-          {loading ? "Szukam..." : "Szukaj"}
+          {loading ? t("search.loading") : t("search.searchBtn")}
         </button>
         {!isPro && (
           <Link href="/cennik" style={{ width: "100%", padding: "9px 0", fontSize: 13, fontWeight: 500, background: "transparent", color: "#2563eb", border: "1px solid #2563eb44", borderRadius: 10, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, boxSizing: "border-box" }}>
@@ -627,6 +628,7 @@ function SearchPage() {
   const { theme } = useTheme()
   const dark = theme === "dark"
   const { plan } = useUser()
+  const t = useT()
   const isPro = plan === "basic" || plan === "pro"
 
   const [q, setQ] = useState(searchParams.get("q") ?? "")
@@ -801,7 +803,7 @@ function SearchPage() {
           {searched && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
               <span style={{ fontSize: 13, color: mutedColor }}>
-                {loading ? "Szukam..." : total === 0 ? "Brak wyników" : <><strong style={{ color: textColor }}>{total.toLocaleString("pl-PL")}</strong> wyników{pages > 1 && ` — strona ${page} z ${pages}`}</>}
+                {loading ? "Szukam..." : total === 0 ? t("search.noResults") : <><strong style={{ color: textColor }}>{total.toLocaleString("pl-PL")}</strong> wyników{pages > 1 && ` — strona ${page} z ${pages}`}</>}
               </span>
               {results && results.length > 0 && !loading && (
                 <button onClick={() => { const v = visibleResults.map(r => r.nip).filter(Boolean) as string[]; const all = v.every(n => checked.has(n)); setChecked(all ? new Set() : new Set(v)) }}
