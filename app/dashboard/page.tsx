@@ -56,6 +56,7 @@ export default function DashboardPage() {
   const hover = dark ? "#1a1a1a" : "#f9fafb"
   const divider = dark ? "#1a1a1a" : "#f3f4f6"
   const inputBorder = dark ? "#2a2a2a" : "#e8eaed"
+  const sidebarBg = dark ? "#0d0d0d" : "#f8f9fb"
 
   useEffect(() => {
     async function load() {
@@ -169,11 +170,11 @@ export default function DashboardPage() {
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: "przeglad",   label: t("dashboard.tabOverview"),    icon: <LayoutDashboard size={14} /> },
-    { id: "eksporty",   label: t("dashboard.tabExports"),     icon: <Download size={14} /> },
-    { id: "monitoring", label: t("dashboard.tabMonitoring"),  icon: <Bell size={14} />, badge: unreadCount },
-    { id: "konto",      label: t("dashboard.tabAccount"),     icon: <User size={14} /> },
-    { id: "faktury",    label: t("dashboard.tabInvoices"),    icon: <Receipt size={14} /> },
+    { id: "przeglad",   label: t("dashboard.tabOverview"),    icon: <LayoutDashboard size={15} /> },
+    { id: "eksporty",   label: t("dashboard.tabExports"),     icon: <Download size={15} /> },
+    { id: "monitoring", label: t("dashboard.tabMonitoring"),  icon: <Bell size={15} />, badge: unreadCount },
+    { id: "konto",      label: t("dashboard.tabAccount"),     icon: <User size={15} /> },
+    { id: "faktury",    label: t("dashboard.tabInvoices"),    icon: <Receipt size={15} /> },
   ]
 
   const TabPrzeglad = () => (
@@ -612,27 +613,95 @@ export default function DashboardPage() {
     </div>
   )
 
+  // ── PAGE TITLE per tab ──
+  const tabTitles: Record<Tab, string> = {
+    przeglad:   t("dashboard.tabOverview"),
+    eksporty:   t("dashboard.tabExports"),
+    monitoring: t("dashboard.tabMonitoring"),
+    konto:      t("dashboard.tabAccount"),
+    faktury:    t("dashboard.tabInvoices"),
+  }
+
   return (
-    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em", color: text, margin: 0 }}>{t("dashboard.title")}</h1>
-          <p style={{ fontSize: 14, color: muted, marginTop: 4 }}>{user?.user_metadata?.full_name || user?.email}</p>
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", minHeight: "calc(100vh - 56px)", display: "flex" }}>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+
+      {/* ── LEFT SIDEBAR ── */}
+      <aside style={{
+        width: 220, flexShrink: 0,
+        background: sidebarBg,
+        borderRight: `1px solid ${border}`,
+        padding: "28px 12px",
+        position: "sticky", top: 56,
+        height: "calc(100vh - 56px)",
+        overflowY: "auto",
+        display: "flex", flexDirection: "column", gap: 2,
+      }}>
+        {/* User info */}
+        <div style={{ padding: "0 8px 20px", marginBottom: 4, borderBottom: `1px solid ${border}` }}>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 8 }}>
+            {(user?.user_metadata?.full_name || user?.email || "?")[0].toUpperCase()}
+          </div>
+          <p style={{ fontSize: 13, fontWeight: 600, color: text, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {user?.user_metadata?.full_name?.split(" ")[0] || user?.email?.split("@")[0]}
+          </p>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", padding: "2px 8px", borderRadius: 4, background: profile?.plan === "pro" ? "#eff6ff" : profile?.plan === "basic" ? "#f5f3ff" : `${border}`, color: planColor, display: "inline-block", marginTop: 4 }}>
+            {planLabel}
+          </span>
         </div>
 
-        <div style={{ display: "flex", gap: 4, marginBottom: 24, background: sub, padding: 4, borderRadius: 12, width: "fit-content", border: `1px solid ${border}` }}>
-          {tabs.map(tab => (
+        {/* Nav items */}
+        {tabs.map(tab => {
+          const active = activeTab === tab.id
+          return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", fontSize: 13, fontWeight: activeTab === tab.id ? 600 : 400, color: activeTab === tab.id ? text : muted, background: activeTab === tab.id ? card : "transparent", border: activeTab === tab.id ? `1px solid ${border}` : "1px solid transparent", borderRadius: 8, cursor: "pointer", boxShadow: activeTab === tab.id ? "0 1px 3px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s", fontFamily: "'DM Sans', system-ui, sans-serif", position: "relative" }}>
-              {tab.icon}
-              {tab.label}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "9px 12px", borderRadius: 8, width: "100%",
+                fontSize: 13, fontWeight: active ? 600 : 400,
+                color: active ? "#2563eb" : muted,
+                background: active ? (dark ? "#1a2a4a" : "#eff6ff") : "transparent",
+                border: "none", cursor: "pointer", textAlign: "left",
+                fontFamily: "inherit", position: "relative",
+                transition: "background 0.1s, color 0.1s",
+              }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = hover; if (!active) e.currentTarget.style.color = text }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; if (!active) e.currentTarget.style.color = muted }}>
+              <span style={{ color: active ? "#2563eb" : muted, display: "flex", flexShrink: 0 }}>{tab.icon}</span>
+              <span style={{ flex: 1 }}>{tab.label}</span>
               {tab.badge != null && tab.badge > 0 && (
-                <span style={{ fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff", borderRadius: 100, padding: "1px 5px", minWidth: 16, textAlign: "center", lineHeight: "14px" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff", borderRadius: 100, padding: "1px 6px", minWidth: 16, textAlign: "center", lineHeight: "14px" }}>
                   {tab.badge > 99 ? "99+" : tab.badge}
                 </span>
               )}
             </button>
-          ))}
+          )
+        })}
+
+        {/* Bottom CTA */}
+        {profile?.plan === "free" && (
+          <div style={{ marginTop: "auto", paddingTop: 20 }}>
+            <Link href="/cennik" style={{
+              display: "block", padding: "10px 12px", background: "#2563eb",
+              color: "#fff", borderRadius: 10, textDecoration: "none",
+              fontSize: 12, fontWeight: 600, textAlign: "center",
+            }}>
+              ⚡ {t("dashboard.upgradeBtn")}
+            </Link>
+          </div>
+        )}
+      </aside>
+
+      {/* ── MAIN CONTENT ── */}
+      <main style={{ flex: 1, minWidth: 0, padding: "32px 40px", overflowY: "auto" }}>
+        {/* Page header */}
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", color: text, margin: 0 }}>
+            {tabTitles[activeTab]}
+          </h1>
+          <p style={{ fontSize: 13, color: muted, marginTop: 4 }}>
+            {user?.user_metadata?.full_name || user?.email}
+          </p>
         </div>
 
         {activeTab === "przeglad"   && <TabPrzeglad />}
@@ -640,8 +709,7 @@ export default function DashboardPage() {
         {activeTab === "monitoring" && <TabMonitoring />}
         {activeTab === "konto"      && <TabKonto />}
         {activeTab === "faktury"    && <TabFaktury />}
-      </div>
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </main>
     </div>
   )
 }
