@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useTheme } from "@/components/ThemeProvider"
 import { useT } from "@/lib/i18n"
-import { useRouter, useSearchParams } from "next/navigation"
+import { TabCrm } from "./TabCrm"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   Download, Bell, Shield, FileText, TrendingUp, User, ChevronRight,
@@ -22,7 +23,7 @@ type Export = { id: string; status: string; record_count: number | null; created
 type Invoice = { id: string; created_at: string; amount: number; status: string; invoice_number: string | null; pdf_url: string | null; description: string | null }
 type MonitoredFirm = { id: string; nip: string; nazwa: string | null; zrodlo: "KRS" | "CEIDG"; added_at: string; last_checked: string | null }
 type FirmAlert = { id: string; nip: string; nazwa: string | null; zrodlo: "KRS" | "CEIDG"; typ: string; opis: string; wartosc_stara: string | null; wartosc_nowa: string | null; is_read: boolean; created_at: string }
-type Tab = "przeglad" | "eksporty" | "monitoring" | "konto" | "faktury"
+type Tab = "przeglad" | "eksporty" | "monitoring" | "konto" | "faktury" | "crm"
 
 const ALERT_ICONS: Record<string, string> = {
   adres: "📍", status: "⚡", kapital: "💰", zarzad: "👤", pkd: "🏷️", prokura: "📋", default: "🔔",
@@ -175,6 +176,7 @@ export default function DashboardPage() {
     { id: "monitoring", label: t("dashboard.tabMonitoring"),  icon: <Bell size={15} />, badge: unreadCount },
     { id: "konto",      label: t("dashboard.tabAccount"),     icon: <User size={15} /> },
     { id: "faktury",    label: t("dashboard.tabInvoices"),    icon: <Receipt size={15} /> },
+    { id: "crm", label: "CRM TEST", icon: <CreditCard size={15} /> },
   ]
 
   const TabPrzeglad = () => (
@@ -620,6 +622,7 @@ export default function DashboardPage() {
     monitoring: t("dashboard.tabMonitoring"),
     konto:      t("dashboard.tabAccount"),
     faktury:    t("dashboard.tabInvoices"),
+    crm: "CRM",
   }
 
   return (
@@ -709,6 +712,7 @@ export default function DashboardPage() {
         {activeTab === "monitoring" && <TabMonitoring />}
         {activeTab === "konto"      && <TabKonto />}
         {activeTab === "faktury"    && <TabFaktury />}
+        {activeTab === "crm" && <TabCrm dark={dark} userId={user?.id ?? ""} />}
       </main>
     </div>
   )
