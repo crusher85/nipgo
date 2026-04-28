@@ -783,7 +783,7 @@ function SearchPage() {
       </div>
 
       {/* Layout */}
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 32px", display: "flex", gap: 28, alignItems: "flex-start" }}>
+      <div style={{ padding: "24px 32px", display: "flex", gap: 28, alignItems: "flex-start" }}>
         <Sidebar dark={dark} q={q} setQ={setQ} miejscowosc={miejscowosc} setMiejscowosc={setMiejscowosc}
           wojewodztwo={wojewodztwo} setWojewodztwo={setWojewodztwo} formaP={formaP} setFormaP={setFormaP}
           zrodlo={zrodlo} setZrodlo={setZrodlo} status={status} setStatus={setStatus} pkd={pkd} setPkd={setPkd}
