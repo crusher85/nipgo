@@ -306,6 +306,8 @@ export function FirmaView(props: FirmaViewProps) {
   const [isMonitored, setIsMonitored] = useState(false)
   const [monitorLoading, setMonitorLoading] = useState(false)
   const [monitorToast, setMonitorToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [crmLoading, setCrmLoading] = useState(false)
+  const [crmAdded, setCrmAdded] = useState(false)
   const { theme } = useTheme()
   const dark = theme === "dark"
   const S = makeS(dark)
@@ -326,10 +328,7 @@ export function FirmaView(props: FirmaViewProps) {
 
   async function handleMonitor() {
     const supabase = createClient()
-    if (!userId) {
-      window.location.href = "/login"
-      return
-    }
+    if (!userId) { window.location.href = "/login"; return }
     setMonitorLoading(true)
     if (isMonitored) {
       await supabase.rpc("remove_from_monitoring", { p_nip: props.nip })
@@ -349,6 +348,30 @@ export function FirmaView(props: FirmaViewProps) {
       }
     }
     setMonitorLoading(false)
+  }
+
+  async function handleAddToCrm() {
+    if (!userId) { window.location.href = "/login"; return }
+    if (userPlan !== "pro") { window.location.href = "/cennik"; return }
+    setCrmLoading(true)
+    const supabase = createClient()
+    const { data } = await supabase.rpc("add_to_crm", {
+      p_nip: props.nip,
+      p_nazwa: props.name,
+      p_forma_prawna: props.legalForm || null,
+      p_miejscowosc: props.address.city || null,
+      p_wojewodztwo: props.address.voivodeship || null,
+      p_pkd_glowne: props.pkdCodes.find(p => p.isPrimary)?.code || null,
+      p_telefon: props.contact.phone || null,
+      p_email: props.contact.email || null,
+      p_www: props.contact.website || null,
+      p_source: "manual",
+    })
+    setCrmLoading(false)
+    if (data?.error === "already_exists") { setCrmAdded(true); showToast("Firma już jest w CRM", true) }
+    else if (data?.error === "requires_pro") { window.location.href = "/cennik" }
+    else if (data?.error === "limit_reached") { showToast("Limit 500 kontaktów osiągnięty", false) }
+    else if (data?.success) { setCrmAdded(true); showToast("Dodano do CRM!", true) }
   }
 
   function showToast(msg: string, ok: boolean) {
@@ -459,7 +482,7 @@ export function FirmaView(props: FirmaViewProps) {
           </div>
         )}
 
-        {/* Hero — czysty, bez przycisków */}
+        {/* Hero */}
         <div style={{ marginBottom: 20 }}>
           <div className="ha0" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", color: st.color, background: `${st.color}18`, border: `1px solid ${st.color}33`, padding: "3px 10px", borderRadius: 100 }}>
@@ -738,30 +761,21 @@ export function FirmaView(props: FirmaViewProps) {
                 {address.full && <div style={{ padding: "10px 14px", borderTop: `1px solid ${S.border}` }}><p style={{ fontSize: 11, color: S.textMuted, lineHeight: 1.5, margin: 0 }}>{address.full}</p></div>}
               </div>
 
-              {/* Akcje — wszystkie w jednej sekcji */}
+              {/* Akcje */}
               <div style={S.card}>
                 <div style={S.cardHeader}><span style={S.label}>Akcje</span></div>
                 <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 7 }}>
 
-                  {/* Obserwuj — toggle, wyróżniony */}
-                  <button
-                    onClick={handleMonitor}
-                    disabled={monitorLoading}
-                    style={{
-                      ...S.btnPrimary,
-                      width: "100%",
-                      justifyContent: "center",
-                      background: isMonitored ? (dark ? "#0d2218" : "#f0fdf4") : "#2563eb",
-                      color: isMonitored ? "#16a34a" : "#fff",
-                      border: isMonitored ? "1px solid #bbf7d0" : "none",
-                      opacity: monitorLoading ? 0.7 : 1,
-                    }}>
-                    {monitorLoading
-                      ? <span style={{ fontSize: 12 }}>...</span>
-                      : isMonitored
-                        ? <><BellOff size={13} /> Obserwowane ✓</>
-                        : <><Bell size={13} /> Obserwuj</>
-                    }
+                  {/* Obserwuj */}
+                  <button onClick={handleMonitor} disabled={monitorLoading}
+                    style={{ ...S.btnPrimary, width: "100%", justifyContent: "center", background: isMonitored ? (dark ? "#0d2218" : "#f0fdf4") : "#2563eb", color: isMonitored ? "#16a34a" : "#fff", border: isMonitored ? "1px solid #bbf7d0" : "none", opacity: monitorLoading ? 0.7 : 1 }}>
+                    {monitorLoading ? <span style={{ fontSize: 12 }}>...</span> : isMonitored ? <><BellOff size={13} /> Obserwowane ✓</> : <><Bell size={13} /> Obserwuj</>}
+                  </button>
+
+                  {/* Dodaj do CRM */}
+                  <button onClick={handleAddToCrm} disabled={crmLoading || crmAdded}
+                    style={{ ...S.btnOutline, width: "100%", justifyContent: "center", fontSize: 12, background: crmAdded ? (dark ? "#0d2218" : "#f0fdf4") : S.btnOutline.background, color: crmAdded ? "#16a34a" : S.btnOutline.color, border: crmAdded ? "1px solid #bbf7d0" : S.btnOutline.border, opacity: crmLoading ? 0.7 : 1 }}>
+                    {crmLoading ? "..." : crmAdded ? <><Check size={12} /> W CRM</> : <><Building2 size={12} /> Dodaj do CRM</>}
                   </button>
 
                   {/* Eksportuj */}
