@@ -170,13 +170,13 @@ export default function DashboardPage() {
     )
   }
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: "przeglad",   label: t("dashboard.tabOverview"),    icon: <LayoutDashboard size={15} /> },
-    { id: "eksporty",   label: t("dashboard.tabExports"),     icon: <Download size={15} /> },
-    { id: "monitoring", label: t("dashboard.tabMonitoring"),  icon: <Bell size={15} />, badge: unreadCount },
-    { id: "konto",      label: t("dashboard.tabAccount"),     icon: <User size={15} /> },
-    { id: "faktury",    label: t("dashboard.tabInvoices"),    icon: <Receipt size={15} /> },
-    { id: "crm", label: "CRM TEST", icon: <CreditCard size={15} /> },
+  const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number; group?: "top" | "bottom" }[] = [
+    { id: "przeglad",   label: t("dashboard.tabOverview"),   icon: <LayoutDashboard size={15} />, group: "top" },
+    { id: "monitoring", label: t("dashboard.tabMonitoring"), icon: <Bell size={15} />, badge: unreadCount, group: "top" },
+    { id: "crm",        label: "CRM",                        icon: <CreditCard size={15} />, group: "top" },
+    { id: "eksporty",   label: t("dashboard.tabExports"),    icon: <Download size={15} />, group: "top" },
+    { id: "konto",      label: t("dashboard.tabAccount"),    icon: <User size={15} />, group: "bottom" },
+    { id: "faktury",    label: t("dashboard.tabInvoices"),   icon: <Receipt size={15} />, group: "bottom" },
   ]
 
   const TabPrzeglad = () => (
@@ -653,33 +653,58 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        {/* Nav items */}
-        {tabs.map(tab => {
-          const active = activeTab === tab.id
-          return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 12px", borderRadius: 8, width: "100%",
-                fontSize: 13, fontWeight: active ? 600 : 400,
-                color: active ? "#2563eb" : muted,
-                background: active ? (dark ? "#1a2a4a" : "#eff6ff") : "transparent",
-                border: "none", cursor: "pointer", textAlign: "left",
-                fontFamily: "inherit", position: "relative",
-                transition: "background 0.1s, color 0.1s",
-              }}
-              onMouseEnter={e => { if (!active) e.currentTarget.style.background = hover; if (!active) e.currentTarget.style.color = text }}
-              onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; if (!active) e.currentTarget.style.color = muted }}>
-              <span style={{ color: active ? "#2563eb" : muted, display: "flex", flexShrink: 0 }}>{tab.icon}</span>
-              <span style={{ flex: 1 }}>{tab.label}</span>
-              {tab.badge != null && tab.badge > 0 && (
-                <span style={{ fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff", borderRadius: 100, padding: "1px 6px", minWidth: 16, textAlign: "center", lineHeight: "14px" }}>
-                  {tab.badge > 99 ? "99+" : tab.badge}
-                </span>
-              )}
-            </button>
-          )
-        })}
+        {/* Nav items - top */}
+{tabs.filter(t => t.group === "top").map(tab => {
+  const active = activeTab === tab.id
+  return (
+    <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "9px 12px", borderRadius: 8, width: "100%",
+        fontSize: 13, fontWeight: active ? 600 : 400,
+        color: active ? "#2563eb" : muted,
+        background: active ? (dark ? "#1a2a4a" : "#eff6ff") : "transparent",
+        border: "none", cursor: "pointer", textAlign: "left",
+        fontFamily: "inherit", position: "relative",
+        transition: "background 0.1s, color 0.1s",
+      }}
+      onMouseEnter={e => { if (!active) { e.currentTarget.style.background = hover; e.currentTarget.style.color = text } }}
+      onMouseLeave={e => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = muted } }}>
+      <span style={{ color: active ? "#2563eb" : muted, display: "flex", flexShrink: 0 }}>{tab.icon}</span>
+      <span style={{ flex: 1 }}>{tab.label}</span>
+      {tab.badge != null && tab.badge > 0 && (
+        <span style={{ fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff", borderRadius: 100, padding: "1px 6px", minWidth: 16, textAlign: "center", lineHeight: "14px" }}>
+          {tab.badge > 99 ? "99+" : tab.badge}
+        </span>
+      )}
+    </button>
+  )
+})}
+
+{/* Separator */}
+<div style={{ height: 1, background: border, margin: "8px 0" }} />
+
+{/* Nav items - bottom */}
+{tabs.filter(t => t.group === "bottom").map(tab => {
+  const active = activeTab === tab.id
+  return (
+    <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+      style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "9px 12px", borderRadius: 8, width: "100%",
+        fontSize: 13, fontWeight: active ? 600 : 400,
+        color: active ? "#2563eb" : muted,
+        background: active ? (dark ? "#1a2a4a" : "#eff6ff") : "transparent",
+        border: "none", cursor: "pointer", textAlign: "left",
+        fontFamily: "inherit", transition: "background 0.1s, color 0.1s",
+      }}
+      onMouseEnter={e => { if (!active) { e.currentTarget.style.background = hover; e.currentTarget.style.color = text } }}
+      onMouseLeave={e => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = muted } }}>
+      <span style={{ color: active ? "#2563eb" : muted, display: "flex", flexShrink: 0 }}>{tab.icon}</span>
+      <span style={{ flex: 1 }}>{tab.label}</span>
+    </button>
+  )
+})}
 
         {/* Bottom CTA */}
         {profile?.plan === "free" && (
