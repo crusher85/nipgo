@@ -816,7 +816,7 @@ function SearchPage() {
             </div>
           )}
 
-          {!loading && results !== null && results.length > 0 && (
+            {!loading && !planLoading && results !== null && results.length > 0 && (
             <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
               {visibleResults.map((item, i) => (
                 <ResultRow key={`${item.zrodlo}-${item.nip}-${i}`} item={item} dark={dark}
@@ -876,7 +876,7 @@ function SearchPage() {
             </div>
           )}
 
-          {!isPro && searched && !loading && results && results.length > FREE_LIMIT && (
+            {!planLoading && !isPro && searched && !loading && results && results.length > FREE_LIMIT && (
             <div style={{ marginTop: 16, padding: "14px 20px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
               <div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: "#1d4ed8", margin: 0 }}>Pokazujemy {FREE_LIMIT} z {total.toLocaleString("pl-PL")} wyników</p>
