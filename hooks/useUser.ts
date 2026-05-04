@@ -34,16 +34,16 @@ export function useUser(): UserProfile {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user) { setLoading(false); return }
-
-      setUser(session.user)
-
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) { setLoading(false); return }
+      
+      setUser(authUser)
+      
       const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("plan, export_records_used_month, export_records_limit, ai_queries_used_today, ai_queries_limit, monitoring_limit")
-        .eq("id", session.user.id)
-        .maybeSingle()
+      .from("user_profiles")
+      .select("plan, export_records_used_month, export_records_limit, ai_queries_limit, monitoring_limit")
+      .eq("id", authUser.id)
+      .maybeSingle()
 
       if (profile) {
         setPlan((profile.plan as Plan) ?? "free")
