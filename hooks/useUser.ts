@@ -49,7 +49,6 @@ export function useUser(): UserProfile {
         setPlan((profile.plan as Plan) ?? "free")
         setExportRecordsUsed(profile.export_records_used_month ?? 0)
         setExportRecordsLimit(profile.export_records_limit ?? 0)
-        setAiQueriesUsedToday(profile.ai_queries_used_today ?? 0)
         setAiQueriesLimit(profile.ai_queries_limit ?? 0)
         setMonitoringLimit(profile.monitoring_limit ?? 0)
       }
