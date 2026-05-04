@@ -603,6 +603,7 @@ function SearchPage() {
   const { plan, loading: planLoading } = useUser()
   const t = useT()
   const isPro = plan === "basic" || plan === "pro"
+  console.log('DEBUG plan:', plan, 'planLoading:', planLoading, 'isPro:', isPro)
 
   const [q, setQ] = useState(searchParams.get("q") ?? "")
   const [miejscowosc, setMiejscowosc] = useState(searchParams.get("miejscowosc") ?? "")
