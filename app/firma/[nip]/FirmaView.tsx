@@ -174,7 +174,6 @@ function makeS(dark: boolean) {
 }
 
 function Field({ label, value, children, S }: { label: string; value?: string | null; children?: React.ReactNode; S: ReturnType<typeof makeS> }) {
-  const t = useT()
   const content = children ?? value
   if (!content && content !== 0) return null
   return (
@@ -186,7 +185,6 @@ function Field({ label, value, children, S }: { label: string; value?: string | 
 }
 
 function PersonRow({ rep, S }: { rep: Rep; S: ReturnType<typeof makeS> }) {
-  const t = useT()
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: `1px solid ${S.borderLight}` }}>
       <div style={S.avatar}>{getInitials(rep.name) || "?"}</div>
@@ -199,16 +197,13 @@ function PersonRow({ rep, S }: { rep: Rep; S: ReturnType<typeof makeS> }) {
 }
 
 function ProBadge({ dark }: { dark: boolean }) {
-  const t = useT()
   return <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: dark ? "#1a1060" : "#ede9fe", color: dark ? "#7c6fff" : "#7c3aed", padding: "2px 7px", borderRadius: 4, marginLeft: 6, textTransform: "uppercase" as const }}>PRO</span>
 }
 function FreeBadge({ dark }: { dark: boolean }) {
-  const t = useT()
   return <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", background: dark ? "#0d2218" : "#dcfce7", color: dark ? "#22c55e" : "#16a34a", padding: "2px 7px", borderRadius: 4, marginLeft: 6, textTransform: "uppercase" as const }}>free</span>
 }
 
 function ProPaywall({ dark, S, desc }: { dark: boolean; S: ReturnType<typeof makeS>; desc: string }) {
-  const t = useT()
   return (
     <div style={{ position: "relative", minHeight: 360, borderRadius: 16, overflow: "hidden", border: `1px solid ${dark ? "#1a1a1a" : "#e8eaed"}`, background: dark ? "#0d0d0d" : "#f9fafb" }}>
       <div style={{ padding: 32, filter: "blur(2px)", pointerEvents: "none", userSelect: "none" }}>
@@ -231,7 +226,6 @@ function KontekstRow({ kontekst, city, voivodeship, pkdCode, dark, S, isPro }: {
   city: string; voivodeship: string; pkdCode: string
   dark: boolean; S: ReturnType<typeof makeS>; isPro: boolean
 }) {
-  const t = useT()
   const cityName = sc(city) || "mieście"
   const vojName = sc(voivodeship) || "województwie"
   const pkdShort = pkdCode?.split(/[\s—]/)[0] || ""
@@ -374,6 +368,17 @@ export function FirmaView(props: FirmaViewProps) {
     else if (data?.success) { setCrmAdded(true); showToast("Dodano do CRM!", true) }
   }
 
+  function handlePrint() { window.print() }
+
+  function handleShare() {
+    navigator.clipboard.writeText(window.location.href)
+    showToast("Link skopiowany do schowka!", true)
+  }
+
+  function handleExport() {
+    showToast("Eksport danych wkrótce dostępny", true)
+  }
+
   function showToast(msg: string, ok: boolean) {
     setMonitorToast({ msg, ok })
     setTimeout(() => setMonitorToast(null), 3000)
@@ -438,6 +443,11 @@ export function FirmaView(props: FirmaViewProps) {
     sygnaly: "Zdarzenia rejestrowe jako sygnały zakupowe — nowy zarząd, wzrost kapitału, zmiana adresu, nowe PKD",
     dotacje: "Dotacje UE, pomoc publiczna PARP, wygrane przetargi, projekty dofinansowane",
   }
+
+  // Build CEIDG link
+  const ceidgLink = isCEIDG
+    ? `https://www.biznes.gov.pl/pl/wyszukiwarka-firm/wyniki-wyszukiwania-nip/firma/${nip}`
+    : krsLink
 
   return (
     <div style={{ color: S.text, fontFamily: "'DM Sans', 'Inter', system-ui, sans-serif" }}>
@@ -530,10 +540,10 @@ export function FirmaView(props: FirmaViewProps) {
 
         {/* Tabs */}
         <div style={{ display: "flex", borderBottom: `1px solid ${dark ? "#1a1a1a" : "#e8eaed"}`, marginBottom: 24, overflowX: "auto" }}>
-          {TABS.map((t, idx) => {
-            const active = tab === t.key
+          {TABS.map((tb, idx) => {
+            const active = tab === tb.key
             return (
-              <button key={t.key} onClick={() => setTab(t.key)} className="tab-btn" style={{
+              <button key={tb.key} onClick={() => setTab(tb.key)} className="tab-btn" style={{
                 display: "flex", flexDirection: "column", alignItems: "flex-start",
                 padding: "12px 20px", cursor: "pointer",
                 background: active ? (dark ? "#0d1929" : "#f0f7ff") : "none",
@@ -543,9 +553,9 @@ export function FirmaView(props: FirmaViewProps) {
                 whiteSpace: "nowrap", minWidth: 110, transition: "all 0.15s",
               }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: active ? 600 : 400, marginBottom: 2 }}>
-                  {t.icon}{t.label}{t.pro ? <ProBadge dark={dark} /> : <FreeBadge dark={dark} />}
+                  {tb.icon}{tb.label}{tb.pro ? <ProBadge dark={dark} /> : <FreeBadge dark={dark} />}
                 </span>
-                <span style={{ fontSize: 10, color: active ? "#2563eb99" : (dark ? "#333" : "#bbb") }}>{t.sub}</span>
+                <span style={{ fontSize: 10, color: active ? "#2563eb99" : (dark ? "#333" : "#bbb") }}>{tb.sub}</span>
               </button>
             )
           })}
@@ -748,7 +758,7 @@ export function FirmaView(props: FirmaViewProps) {
               )}
             </div>
 
-            {/* ── Sidebar ── */}
+            {/* Sidebar */}
             <aside style={{ width: 260, flexShrink: 0, position: "sticky", top: 72, alignSelf: "flex-start" }}>
               {/* Mapa */}
               <div style={{ ...S.card, overflow: "hidden" }}>
@@ -765,7 +775,6 @@ export function FirmaView(props: FirmaViewProps) {
               <div style={S.card}>
                 <div style={S.cardHeader}><span style={S.label}>Akcje</span></div>
                 <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 7 }}>
-
                   {/* Obserwuj */}
                   <button onClick={handleMonitor} disabled={monitorLoading}
                     style={{ ...S.btnPrimary, width: "100%", justifyContent: "center", background: isMonitored ? (dark ? "#0d2218" : "#f0fdf4") : "#2563eb", color: isMonitored ? "#16a34a" : "#fff", border: isMonitored ? "1px solid #bbf7d0" : "none", opacity: monitorLoading ? 0.7 : 1 }}>
@@ -779,38 +788,50 @@ export function FirmaView(props: FirmaViewProps) {
                   </button>
 
                   {/* Eksportuj */}
-                  <button style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12 }}>
+                  <button onClick={handleExport} style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12 }}>
                     <Download size={12} /> Eksportuj dane
                   </button>
 
-                  {/* Pozostałe akcje */}
-                  {[
-                    { icon: <Printer size={12} />, label: t("firma.btnPrint") },
-                    { icon: <Share2 size={12} />, label: t("firma.btnShare") },
-                    { icon: <Flag size={12} />, label: t("firma.btnReportError") },
-                    ...(krsLink ? [{ icon: <ExternalLink size={12} />, label: `Wpis w ${source}`, href: krsLink }] : []),
-                  ].map((a, i) => (
-                    "href" in a
-                      ? <a key={i} href={a.href} target="_blank" rel="noopener noreferrer" style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12, textDecoration: "none" }}>{a.icon} {a.label}</a>
-                      : <button key={i} style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12 }}>{a.icon} {a.label}</button>
-                  ))}
+                  {/* Drukuj */}
+                  <button onClick={handlePrint} style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12 }}>
+                    <Printer size={12} /> {t("firma.btnPrint")}
+                  </button>
+
+                  {/* Udostępnij */}
+                  <button onClick={handleShare} style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12 }}>
+                    <Share2 size={12} /> {t("firma.btnShare")}
+                  </button>
+
+                  {/* Zgłoś błąd */}
+                  <button onClick={() => showToast("Dziękujemy za zgłoszenie!", true)} style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12 }}>
+                    <Flag size={12} /> {t("firma.btnReportError")}
+                  </button>
+
+                  {/* Wpis w rejestrze */}
+                  {ceidgLink && (
+                    <a href={ceidgLink} target="_blank" rel="noopener noreferrer" style={{ ...S.btnOutline, width: "100%", justifyContent: "flex-start", fontSize: 12, textDecoration: "none" }}>
+                      <ExternalLink size={12} /> Wpis w {source}
+                    </a>
+                  )}
                 </div>
               </div>
 
-              {/* Pro CTA */}
-              <div style={{ background: dark ? "linear-gradient(135deg, #0f1f44 0%, #0a0a2a 100%)" : "#eff6ff", border: `1px solid ${dark ? "#1a3a7a" : "#bfdbfe"}`, borderRadius: 14, padding: 16 }}>
-                <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "#2563eb", textTransform: "uppercase", marginBottom: 5 }}>Plan Pro</p>
-                <p style={{ fontSize: 12, fontWeight: 400, color: dark ? "#ccc" : "#374151", lineHeight: 1.5, marginBottom: 14 }}>Finanse, ryzyko, sygnały i dotacje — pełny obraz firmy</p>
-                <Link href="/cennik" style={{ ...S.btnPrimary, width: "100%", justifyContent: "center", textDecoration: "none", fontSize: 12 }}>Odblokuj za 119 zł/mies.</Link>
-              </div>
+              {/* Pro CTA — tylko dla non-pro */}
+              {!isPro && (
+                <div style={{ background: dark ? "linear-gradient(135deg, #0f1f44 0%, #0a0a2a 100%)" : "#eff6ff", border: `1px solid ${dark ? "#1a3a7a" : "#bfdbfe"}`, borderRadius: 14, padding: 16 }}>
+                  <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", color: "#2563eb", textTransform: "uppercase", marginBottom: 5 }}>Plan Pro</p>
+                  <p style={{ fontSize: 12, fontWeight: 400, color: dark ? "#ccc" : "#374151", lineHeight: 1.5, marginBottom: 14 }}>Finanse, ryzyko, sygnały i dotacje — pełny obraz firmy</p>
+                  <Link href="/cennik" style={{ ...S.btnPrimary, width: "100%", justifyContent: "center", textDecoration: "none", fontSize: 12 }}>Odblokuj za 119 zł/mies.</Link>
+                </div>
+              )}
             </aside>
           </div>
         )}
 
-{tab === "finanse" && (isPro ? <div style={{padding:32, color: S.text}}>Sprawozdania finansowe — wkrótce</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.finanse!} />)}
-{tab === "ryzyko" && (isPro ? <div style={{padding:32, color: S.text}}>Scoring i powiązania — wkrótce</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.ryzyko!} />)}
-{tab === "sygnaly" && (isPro ? <div style={{padding:32, color: S.text}}>Sygnały zakupowe — wkrótce</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.sygnaly!} />)}
-{tab === "dotacje" && (isPro ? <div style={{padding:32, color: S.text}}>Dotacje UE — wkrótce</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.dotacje!} />)}
+        {tab === "finanse" && (isPro ? <div style={{ padding: 32, color: S.text, fontSize: 14 }}>Sprawozdania finansowe — wkrótce dostępne</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.finanse!} />)}
+        {tab === "ryzyko" && (isPro ? <div style={{ padding: 32, color: S.text, fontSize: 14 }}>Scoring i powiązania — wkrótce dostępne</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.ryzyko!} />)}
+        {tab === "sygnaly" && (isPro ? <div style={{ padding: 32, color: S.text, fontSize: 14 }}>Sygnały zakupowe — wkrótce dostępne</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.sygnaly!} />)}
+        {tab === "dotacje" && (isPro ? <div style={{ padding: 32, color: S.text, fontSize: 14 }}>Dotacje UE — wkrótce dostępne</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.dotacje!} />)}
       </div>
 
       <footer style={{ borderTop: `1px solid ${dark ? "#111" : "#e8eaed"}`, padding: "20px 24px", textAlign: "center" }}>
