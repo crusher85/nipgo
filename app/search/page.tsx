@@ -600,7 +600,7 @@ function SearchPage() {
   const searchParams = useSearchParams()
   const { theme } = useTheme()
   const dark = theme === "dark"
-  const { plan } = useUser()
+  const { plan, loading } = useUser()
   const t = useT()
   const isPro = plan === "basic" || plan === "pro"
 
@@ -677,8 +677,8 @@ function SearchPage() {
   }, []) // eslint-disable-line
 
   const toggleCheck = (nip: string) => setChecked(prev => { const n = new Set(prev); n.has(nip) ? n.delete(nip) : n.add(nip); return n })
-  const visibleResults = results?.slice(0, isPro ? results.length : FREE_LIMIT) ?? []
-  const blurredResults = !isPro && results ? results.slice(FREE_LIMIT) : []
+  const visibleResults = results?.slice(0, (!loading && isPro) ? results.length : FREE_LIMIT) ?? []
+  const blurredResults = (!loading && !isPro) && results ? results.slice(FREE_LIMIT) : []
 
   const pagesArr = (() => {
     if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1)
