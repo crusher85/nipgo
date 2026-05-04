@@ -807,10 +807,10 @@ export function FirmaView(props: FirmaViewProps) {
           </div>
         )}
 
-        {tab === "finanse" && <ProPaywall dark={dark} S={S} desc={PRO_DESC.finanse!} />}
-        {tab === "ryzyko" && <ProPaywall dark={dark} S={S} desc={PRO_DESC.ryzyko!} />}
-        {tab === "sygnaly" && <ProPaywall dark={dark} S={S} desc={PRO_DESC.sygnaly!} />}
-        {tab === "dotacje" && <ProPaywall dark={dark} S={S} desc={PRO_DESC.dotacje!} />}
+{tab === "finanse" && (isPro ? <div style={{padding:32, color: S.text}}>Sprawozdania finansowe — wkrótce</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.finanse!} />)}
+{tab === "ryzyko" && (isPro ? <div style={{padding:32, color: S.text}}>Scoring i powiązania — wkrótce</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.ryzyko!} />)}
+{tab === "sygnaly" && (isPro ? <div style={{padding:32, color: S.text}}>Sygnały zakupowe — wkrótce</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.sygnaly!} />)}
+{tab === "dotacje" && (isPro ? <div style={{padding:32, color: S.text}}>Dotacje UE — wkrótce</div> : <ProPaywall dark={dark} S={S} desc={PRO_DESC.dotacje!} />)}
       </div>
 
       <footer style={{ borderTop: `1px solid ${dark ? "#111" : "#e8eaed"}`, padding: "20px 24px", textAlign: "center" }}>
